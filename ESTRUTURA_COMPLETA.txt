@@ -1,0 +1,271 @@
+Listagem de caminhos de pasta para o volume HD 4TB
+O número de série do volume é C278-8561
+D:\HFS\PLUGINS\EMULATORJS-PLUGIN
+|   00_LEIA_PRIMEIRO.md
+|   ARCHITECTURE.md
+|   ATUALIZACAO_EMBUTIDO.md
+|   CHECKLIST.md
+|   CHECKLIST_VERIFICACAO.md
+|   CONFIG_EXAMPLE.md
+|   DEVELOPMENT.md
+|   ESTRUTURA_COMPLETA.txt
+|   FOLDER_STRUCTURE.md
+|   INDEX.md
+|   package.json
+|   plugin.js
+|   QUICK_START.md
+|   README.md
+|   RESUMO.md
+|   RESUMO_INSTALACAO.md
+|   SUPPORT.md
+|   TESTING.md
+|   TIPS_TRICKS.md
+|   WELCOME.txt
+|   
++---.vscode
+|       settings.json
+|       
++---public
+|   |   emulator.css
+|   |   emulator.js
+|   |   emulator_page.html
+|   |   
+|   \---emulatorjs-data
+|       |   emulator.css
+|       |   loader.js
+|       |   README.md
+|       |   version.json
+|       |   
+|       +---compression
+|       |       extract7z.js
+|       |       extractzip.js
+|       |       libunrar.js
+|       |       libunrar.wasm
+|       |       README.md
+|       |       
+|       +---cores
+|       |       .npmignore
+|       |       81-legacy-wasm.data
+|       |       81-thread-legacy-wasm.data
+|       |       81-thread-wasm.data
+|       |       81-wasm.data
+|       |       a5200-legacy-wasm.data
+|       |       a5200-thread-legacy-wasm.data
+|       |       a5200-thread-wasm.data
+|       |       a5200-wasm.data
+|       |       beetle_vb-legacy-wasm.data
+|       |       beetle_vb-thread-legacy-wasm.data
+|       |       beetle_vb-thread-wasm.data
+|       |       beetle_vb-wasm.data
+|       |       cap32-legacy-wasm.data
+|       |       cap32-thread-legacy-wasm.data
+|       |       cap32-thread-wasm.data
+|       |       cap32-wasm.data
+|       |       core-README.md
+|       |       crocods-legacy-wasm.data
+|       |       crocods-thread-legacy-wasm.data
+|       |       crocods-thread-wasm.data
+|       |       crocods-wasm.data
+|       |       desmume-legacy-wasm.data
+|       |       desmume-thread-legacy-wasm.data
+|       |       desmume-thread-wasm.data
+|       |       desmume-wasm.data
+|       |       desmume2015-legacy-wasm.data
+|       |       desmume2015-thread-legacy-wasm.data
+|       |       desmume2015-thread-wasm.data
+|       |       desmume2015-wasm.data
+|       |       dosbox_pure-thread-legacy-wasm.data
+|       |       dosbox_pure-thread-wasm.data
+|       |       fbalpha2012_cps1-legacy-wasm.data
+|       |       fbalpha2012_cps1-thread-legacy-wasm.data
+|       |       fbalpha2012_cps1-thread-wasm.data
+|       |       fbalpha2012_cps1-wasm.data
+|       |       fbalpha2012_cps2-legacy-wasm.data
+|       |       fbalpha2012_cps2-thread-legacy-wasm.data
+|       |       fbalpha2012_cps2-thread-wasm.data
+|       |       fbalpha2012_cps2-wasm.data
+|       |       fbneo-legacy-wasm.data
+|       |       fbneo-thread-legacy-wasm.data
+|       |       fbneo-thread-wasm.data
+|       |       fbneo-wasm.data
+|       |       fceumm-legacy-wasm.data
+|       |       fceumm-thread-legacy-wasm.data
+|       |       fceumm-thread-wasm.data
+|       |       fceumm-wasm.data
+|       |       fuse-legacy-wasm.data
+|       |       fuse-thread-legacy-wasm.data
+|       |       fuse-thread-wasm.data
+|       |       fuse-wasm.data
+|       |       gambatte-legacy-wasm.data
+|       |       gambatte-thread-legacy-wasm.data
+|       |       gambatte-thread-wasm.data
+|       |       gambatte-wasm.data
+|       |       gearcoleco-legacy-wasm.data
+|       |       gearcoleco-thread-legacy-wasm.data
+|       |       gearcoleco-thread-wasm.data
+|       |       gearcoleco-wasm.data
+|       |       genesis_plus_gx-legacy-wasm.data
+|       |       genesis_plus_gx-thread-legacy-wasm.data
+|       |       genesis_plus_gx-thread-wasm.data
+|       |       genesis_plus_gx-wasm.data
+|       |       handy-legacy-wasm.data
+|       |       handy-thread-legacy-wasm.data
+|       |       handy-thread-wasm.data
+|       |       handy-wasm.data
+|       |       mame2003-legacy-wasm.data
+|       |       mame2003-thread-legacy-wasm.data
+|       |       mame2003-thread-wasm.data
+|       |       mame2003-wasm.data
+|       |       mame2003_plus-legacy-wasm.data
+|       |       mame2003_plus-thread-legacy-wasm.data
+|       |       mame2003_plus-thread-wasm.data
+|       |       mame2003_plus-wasm.data
+|       |       mednafen_ngp-legacy-wasm.data
+|       |       mednafen_ngp-thread-legacy-wasm.data
+|       |       mednafen_ngp-thread-wasm.data
+|       |       mednafen_ngp-wasm.data
+|       |       mednafen_pce-legacy-wasm.data
+|       |       mednafen_pce-thread-legacy-wasm.data
+|       |       mednafen_pce-thread-wasm.data
+|       |       mednafen_pce-wasm.data
+|       |       mednafen_pcfx-legacy-wasm.data
+|       |       mednafen_pcfx-thread-legacy-wasm.data
+|       |       mednafen_pcfx-thread-wasm.data
+|       |       mednafen_pcfx-wasm.data
+|       |       mednafen_psx_hw-legacy-wasm.data
+|       |       mednafen_psx_hw-thread-legacy-wasm.data
+|       |       mednafen_psx_hw-thread-wasm.data
+|       |       mednafen_psx_hw-wasm.data
+|       |       mednafen_wswan-legacy-wasm.data
+|       |       mednafen_wswan-thread-legacy-wasm.data
+|       |       mednafen_wswan-thread-wasm.data
+|       |       mednafen_wswan-wasm.data
+|       |       melonds-legacy-wasm.data
+|       |       melonds-thread-legacy-wasm.data
+|       |       melonds-thread-wasm.data
+|       |       melonds-wasm.data
+|       |       mgba-legacy-wasm.data
+|       |       mgba-thread-legacy-wasm.data
+|       |       mgba-thread-wasm.data
+|       |       mgba-wasm.data
+|       |       mupen64plus_next-legacy-wasm.data
+|       |       mupen64plus_next-thread-legacy-wasm.data
+|       |       mupen64plus_next-thread-wasm.data
+|       |       mupen64plus_next-wasm.data
+|       |       nestopia-legacy-wasm.data
+|       |       nestopia-thread-legacy-wasm.data
+|       |       nestopia-thread-wasm.data
+|       |       nestopia-wasm.data
+|       |       opera-legacy-wasm.data
+|       |       opera-thread-legacy-wasm.data
+|       |       opera-thread-wasm.data
+|       |       opera-wasm.data
+|       |       parallel_n64-legacy-wasm.data
+|       |       parallel_n64-thread-legacy-wasm.data
+|       |       parallel_n64-thread-wasm.data
+|       |       parallel_n64-wasm.data
+|       |       pcsx_rearmed-legacy-wasm.data
+|       |       pcsx_rearmed-thread-legacy-wasm.data
+|       |       pcsx_rearmed-thread-wasm.data
+|       |       pcsx_rearmed-wasm.data
+|       |       picodrive-legacy-wasm.data
+|       |       picodrive-thread-legacy-wasm.data
+|       |       picodrive-thread-wasm.data
+|       |       picodrive-wasm.data
+|       |       ppsspp-thread-wasm.data
+|       |       prboom-legacy-wasm.data
+|       |       prboom-thread-legacy-wasm.data
+|       |       prboom-thread-wasm.data
+|       |       prboom-wasm.data
+|       |       prosystem-legacy-wasm.data
+|       |       prosystem-thread-legacy-wasm.data
+|       |       prosystem-thread-wasm.data
+|       |       prosystem-wasm.data
+|       |       puae-legacy-wasm.data
+|       |       puae-thread-legacy-wasm.data
+|       |       puae-thread-wasm.data
+|       |       puae-wasm.data
+|       |       README.md
+|       |       same_cdi-legacy-wasm.data
+|       |       same_cdi-thread-legacy-wasm.data
+|       |       same_cdi-thread-wasm.data
+|       |       same_cdi-wasm.data
+|       |       smsplus-legacy-wasm.data
+|       |       smsplus-thread-legacy-wasm.data
+|       |       smsplus-thread-wasm.data
+|       |       smsplus-wasm.data
+|       |       snes9x-legacy-wasm.data
+|       |       snes9x-thread-legacy-wasm.data
+|       |       snes9x-thread-wasm.data
+|       |       snes9x-wasm.data
+|       |       stella2014-legacy-wasm.data
+|       |       stella2014-thread-legacy-wasm.data
+|       |       stella2014-thread-wasm.data
+|       |       stella2014-wasm.data
+|       |       vice_x128-legacy-wasm.data
+|       |       vice_x128-thread-legacy-wasm.data
+|       |       vice_x128-thread-wasm.data
+|       |       vice_x128-wasm.data
+|       |       vice_x64-legacy-wasm.data
+|       |       vice_x64-thread-legacy-wasm.data
+|       |       vice_x64-thread-wasm.data
+|       |       vice_x64-wasm.data
+|       |       vice_x64sc-legacy-wasm.data
+|       |       vice_x64sc-thread-legacy-wasm.data
+|       |       vice_x64sc-thread-wasm.data
+|       |       vice_x64sc-wasm.data
+|       |       vice_xpet-legacy-wasm.data
+|       |       vice_xpet-thread-legacy-wasm.data
+|       |       vice_xpet-thread-wasm.data
+|       |       vice_xpet-wasm.data
+|       |       vice_xplus4-legacy-wasm.data
+|       |       vice_xplus4-thread-legacy-wasm.data
+|       |       vice_xplus4-thread-wasm.data
+|       |       vice_xplus4-wasm.data
+|       |       vice_xvic-legacy-wasm.data
+|       |       vice_xvic-thread-legacy-wasm.data
+|       |       vice_xvic-thread-wasm.data
+|       |       vice_xvic-wasm.data
+|       |       virtualjaguar-legacy-wasm.data
+|       |       virtualjaguar-thread-legacy-wasm.data
+|       |       virtualjaguar-thread-wasm.data
+|       |       virtualjaguar-wasm.data
+|       |       yabause-legacy-wasm.data
+|       |       yabause-thread-legacy-wasm.data
+|       |       yabause-thread-wasm.data
+|       |       yabause-wasm.data
+|       |       
+|       +---localization
+|       |       ar.json
+|       |       bn.json
+|       |       de.json
+|       |       el.json
+|       |       en.json
+|       |       es.json
+|       |       fa.json
+|       |       fr.json
+|       |       hi.json
+|       |       it.json
+|       |       ja.json
+|       |       jv.json
+|       |       ko.json
+|       |       pt.json
+|       |       README.md
+|       |       retroarch.json
+|       |       ro.json
+|       |       ru.json
+|       |       tr.json
+|       |       vi.json
+|       |       zh.json
+|       |       
+|       \---src
+|               compression.js
+|               emulator.js
+|               GameManager.js
+|               gamepad.js
+|               nipplejs.js
+|               shaders.js
+|               socket.io.min.js
+|               storage.js
+|               
+\---storage

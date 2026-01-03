@@ -57,7 +57,6 @@
 │                     📚 DOCUMENTAÇÃO DISPONÍVEL 📚                        │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  📖 00_LEIA_PRIMEIRO.md .............. Sumário completo do projeto      │
 │  📖 INDEX.md ......................... Índice e navegação                │
 │  📖 QUICK_START.md ................... Guia rápido (5 min)              │
 │  📖 README.md ........................ Documentação completa             │
