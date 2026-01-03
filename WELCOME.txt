@@ -1,0 +1,236 @@
+```
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║                  🎮 EMULATORJS PLUGIN PARA HFS 🎮                        ║
+║                                                                           ║
+║                 Executar ROMs Retro Direto no Navegador                 ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        INÍCIO RÁPIDO (2 MINUTOS)                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1️⃣  COPIE A PASTA:                                                     │
+│     Windows (PowerShell):                                               │
+│     Copy-Item .\emulatorJS-plugin -Destination $env:APPDATA\.hfs\...   │
+│                                                                          │
+│     Linux/Mac:                                                          │
+│     cp -r emulatorJS-plugin ~/.hfs/plugins/                             │
+│                                                                          │
+│  2️⃣  REINICIE HFS                                                       │
+│     O plugin aparecerá no painel admin                                   │
+│                                                                          │
+│  3️⃣  COLOQUE ROMS:                                                      │
+│     Copie arquivos .nes, .smc, .gen, etc                                │
+│                                                                          │
+│  4️⃣  CLIQUE E JOGUE:                                                    │
+│     Clique direito em ROM → Emular → Pronto!                            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      🎮 SISTEMAS SUPORTADOS 🎮                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  NINTENDO                    │  SEGA                    │  OUTROS        │
+│  ─────────────────────────   │  ────────────────────    │  ────────────  │
+│  🎯 NES/Famicom (.nes)       │  🔵 Genesis (.gen)       │  🕹️  PS1 (.cue) │
+│  🎯 SNES (.smc, .snes)       │  🔵 Saturn (.sat)        │  🕹️  PSP (.pbp) │
+│  🎯 Game Boy (.gb, .gbc)     │  🔵 Game Gear (.gg)      │  🕹️  Arcade    │
+│  🎯 Game Boy Advance (.gba)  │  🔵 Master System (.sms) │  🕹️  C64 (.prg) │
+│  🎯 Nintendo 64 (.z64)       │  🔵 32X (.32x)           │  🕹️  Amiga     │
+│  🎯 Nintendo DS (.nds)       │                          │  🕹️  Lynx      │
+│  🎯 Virtual Boy (.vb)        │  ATARI                   │                │
+│                              │  ────────                │                │
+│                              │  🟠 2600 (.a26)          │                │
+│                              │  🟠 5200 (.a52)          │                │
+│                              │  🟠 7800 (.a78)          │                │
+│                              │  🟠 Jaguar (.j64)        │                │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     📚 DOCUMENTAÇÃO DISPONÍVEL 📚                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  📖 00_LEIA_PRIMEIRO.md .............. Sumário completo do projeto      │
+│  📖 INDEX.md ......................... Índice e navegação                │
+│  📖 QUICK_START.md ................... Guia rápido (5 min)              │
+│  📖 README.md ........................ Documentação completa             │
+│  📖 ARCHITECTURE.md .................. Diagramas e fluxo                 │
+│  📖 FOLDER_STRUCTURE.md .............. Como organizar ROMs              │
+│  📖 CONFIG_EXAMPLE.md ................ Exemplos de config               │
+│  📖 DEVELOPMENT.md ................... Dev, debug, troubleshooting      │
+│  📖 TIPS_TRICKS.md ................... Dicas e otimizações              │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    ⚙️ ARQUIVOS TÉCNICOS DO PLUGIN ⚙️                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  plugin.js .......................... Backend (Node.js)                  │
+│  ├─ Configuração do plugin                                             │
+│  ├─ Mapeamento de sistemas                                             │
+│  └─ API do HFS integrada                                               │
+│                                                                          │
+│  public/                                                                │
+│  ├─ emulator.js ..................... Frontend (Browser)                │
+│  │  ├─ Detecção de sistemas                                           │
+│  │  ├─ Menu de contexto                                               │
+│  │  ├─ Modal/nova aba                                                 │
+│  │  └─ Integração EmulatorJS                                          │
+│  │                                                                     │
+│  └─ emulator.css .................... Estilos do emulador               │
+│     └─ Modal, iframe, responsive                                       │
+│                                                                          │
+│  package.json ........................ Metadados do projeto              │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   ✨ RECURSOS PRINCIPAIS DO PLUGIN ✨                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ✅ 23+ sistemas suportados (NES, SNES, Genesis, PS1, etc)            │
+│  ✅ 40+ extensões de arquivo reconhecidas automaticamente              │
+│  ✅ Modos de uso múltiplos (menu, preview, file-show)                 │
+│  ✅ Modal integrado ou nova aba (configurável)                        │
+│  ✅ Responsivo para mobile e tablet                                    │
+│  ✅ Configuração via painel admin do HFS                              │
+│  ✅ 3 versões do EmulatorJS (stable, latest, nightly)                 │
+│  ✅ Save State e Load State automáticos                               │
+│  ✅ Suporte a gamepad e teclado                                       │
+│  ✅ Zero dependências externas (frontend)                             │
+│  ✅ Documentação completa (8 arquivos)                                │
+│  ✅ Código comentado e clean                                          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      🎯 FLUXO DE USO PRINCIPAL 🎯                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│                                                                          │
+│       Usuário clica em ROM compatível                                   │
+│                  │                                                      │
+│                  ▼                                                      │
+│       Plugin detecta extensão (.nes, .smc, etc)                         │
+│                  │                                                      │
+│                  ▼                                                      │
+│       Mapeia para sistema (NES, SNES, etc)                             │
+│                  │                                                      │
+│                  ▼                                                      │
+│       Abre interface (modal ou nova aba)                               │
+│                  │                                                      │
+│                  ▼                                                      │
+│       Carrega EmulatorJS do CDN                                        │
+│                  │                                                      │
+│                  ▼                                                      │
+│       Renderiza jogo no canvas HTML5                                   │
+│                  │                                                      │
+│                  ▼                                                      │
+│       Usuário joga normalmente com teclado/gamepad                     │
+│                  │                                                      │
+│                  ▼                                                      │
+│       Fecha emulador quando termina                                    │
+│                                                                          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    📊 ESTATÍSTICAS DO PROJETO 📊                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Linha de Código (backend)     ~200 linhas                             │
+│  Linha de Código (frontend)    ~300 linhas                             │
+│  Total Documentação            ~2000 linhas                            │
+│  Arquivos de Doc               8 arquivos                              │
+│  Sistemas Suportados           23+ sistemas                            │
+│  Extensões Reconhecidas        40+ extensões                           │
+│  Tempo Instalação              2 minutos                               │
+│  Tempo Primeira ROM            5 minutos                               │
+│  Tamanho Total                 ~100 KB (sem CDN)                       │
+│  Requisitos                    HFS v0.51+, navegador moderno          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    🚀 PRÓXIMOS PASSOS (ESCOLHA UM) 🚀                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  👶 SOU INICIANTE                                                       │
+│     1. Leia: 00_LEIA_PRIMEIRO.md (5 min)                               │
+│     2. Leia: QUICK_START.md (5 min)                                    │
+│     3. Instale e divirta-se!                                           │
+│                                                                          │
+│  👨‍💼 SOU ADMINISTRADOR                                                    │
+│     1. Leia: README.md (10 min)                                        │
+│     2. Leia: CONFIG_EXAMPLE.md (5 min)                                 │
+│     3. Configure no painel admin                                       │
+│     4. Consulte: FOLDER_STRUCTURE.md (10 min)                          │
+│                                                                          │
+│  👨‍💻 SOU DESENVOLVEDOR                                                     │
+│     1. Leia: ARCHITECTURE.md (15 min)                                  │
+│     2. Leia: DEVELOPMENT.md (20 min)                                   │
+│     3. Configure ambiente de dev                                       │
+│     4. Faça melhorias!                                                 │
+│                                                                          │
+│  🎮 SOU GAMER                                                           │
+│     1. Instale em 2 minutos                                            │
+│     2. Coloque suas ROMs                                               │
+│     3. Leia: TIPS_TRICKS.md (15 min) para otimizar                     │
+│     4. Comece a jogar!                                                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   🔗 LINKS ÚTEIS DO PROJETO 🔗                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  📖 Documentação HFS Dev:                                              │
+│     https://github.com/rejetto/hfs/blob/main/dev-plugins.md            │
+│                                                                          │
+│  🕹️  Site do EmulatorJS:                                               │
+│     https://emulatorjs.org/                                            │
+│                                                                          │
+│  📚 Docs do EmulatorJS:                                                 │
+│     https://emulatorjs.org/docs/                                       │
+│                                                                          │
+│  💬 Discord do EmulatorJS:                                              │
+│     https://discord.gg/6akryGkETU                                       │
+│                                                                          │
+│  🐙 GitHub do HFS:                                                      │
+│     https://github.com/rejetto/hfs                                      │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║                         ✅ TUDO PRONTO PARA USO ✅                        ║
+║                                                                           ║
+║              🚀 Comece agora com 00_LEIA_PRIMEIRO.md 🚀                  ║
+║                                                                           ║
+║                     Aproveite e divirta-se jogando! 🎮                    ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+Versão: 1.0.0
+Data: 3 de janeiro de 2026
+Status: ✅ Pronto para Produção
+Licença: GPL-3.0
+
+
+```

@@ -1,0 +1,27 @@
+{
+    "name": "emulatorjs-plugin",
+    "version": "1.0.0",
+    "description": "Plugin para HFS que integra EmulatorJS para executar ROMs de consoles retro no navegador",
+    "keywords": [
+        "hfs",
+        "emulator",
+        "game",
+        "console",
+        "retro",
+        "emulatorjs",
+        "rom",
+        "nes",
+        "snes",
+        "megadrive"
+    ],
+    "author": "Seu Nome",
+    "license": "GPL-3.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/seu-usuario/hfs-emulatorjs-plugin"
+    },
+    "bugs": {
+        "url": "https://github.com/seu-usuario/hfs-emulatorjs-plugin/issues"
+    },
+    "homepage": "https://github.com/seu-usuario/hfs-emulatorjs-plugin#readme"
+}
