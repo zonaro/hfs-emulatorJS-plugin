@@ -83,7 +83,7 @@
             font-size: 14px
         }
 
-        /* Styles para o botão "Jogar" do EmulatorJS */
+    
         .ejs_start_button {
             position: fixed !important;
             top: 50% !important;
@@ -122,13 +122,13 @@
 
 <body>
     <div id="header">
-        <h1 id="title">Emulador</h1>
-        <button id="closeBtn">Fechar</button>
+        <h1 id="title">Emulator</h1>
+        <button id="closeBtn">Close</button>
     </div>
     <div id="game"></div>
 
     <script>
-        // Extrair parâmetros ANTES de qualquer código
+        // Extract parameters BEFORE any code
         function qs(name) {
             const params = new URLSearchParams(location.search);
             return params.get(name) || ''
@@ -137,57 +137,57 @@
         const gameUrl = qs('game')
         const core = qs('core') || ''
 
-        console.log('[EmulatorJS] Parâmetros extraídos:')
+        console.log('[EmulatorJS] Extracted parameters:')
         console.log('[EmulatorJS] - gameUrl:', gameUrl)
         console.log('[EmulatorJS] - core:', core)
 
         if (!gameUrl || !core) {
-            console.error('[EmulatorJS] Erro: game ou core não especificado')
-            document.getElementById('game').innerHTML = '<div style="color: #aaa; padding: 20px;">Erro: Parâmetros inválidos</div>'
+            console.error('[EmulatorJS] Error: game or core not specified')
+            document.getElementById('game').innerHTML = '<div style="color: #aaa; padding: 20px;">Error: Invalid parameters</div>'
             throw new Error('Invalid parameters')
         }
 
-        // Configurar título
-        document.getElementById('title').textContent = `Emulador - ${core}`
+        // Configure title
+        document.getElementById('title').textContent = `Emulator - ${core}`
         document.getElementById('closeBtn').addEventListener('click', () => window.close())
 
-        // IMPORTANTE: As variáveis globais DEVEM ser definidas ANTES de carregar loader.js
-        // Não use window.EJS_* - use variáveis globais diretas!
+        // IMPORTANT: Global variables MUST be defined BEFORE loading loader.js
+        // Do not use window.EJS_* - use direct global variables!
         EJS_player = '#game'
         EJS_gameUrl = gameUrl
         EJS_core = core
         EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/'
 
-        console.log('[EmulatorJS] Variáveis globais definidas:')
+        console.log('[EmulatorJS] Global variables set:')
         console.log('[EmulatorJS] - EJS_player:', EJS_player)
         console.log('[EmulatorJS] - EJS_gameUrl:', EJS_gameUrl)
         console.log('[EmulatorJS] - EJS_core:', EJS_core)
         console.log('[EmulatorJS] - EJS_pathtodata:', EJS_pathtodata)
     </script>
 
-    <!-- IMPORTANTE: loader.js deve ser carregado DEPOIS que as variáveis globais foram definidas -->
+    <!-- IMPORTANT: loader.js must be loaded AFTER global variables are set -->
     <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
 
     <script>
-        // Verificar se o loader.js criou a interface
+        // Check if loader.js created the interface
         window.addEventListener('load', () => {
             setTimeout(() => {
-                console.log('[EmulatorJS] Após load event:')
-                console.log('[EmulatorJS] - window.EJS existe?', !!window.EJS)
+                console.log('[EmulatorJS] After load event:')
+                console.log('[EmulatorJS] - window.EJS exists?', !!window.EJS)
                 console.log('[EmulatorJS] - #game children:', document.getElementById('game').children.length)
 
                 const ecsGame = document.querySelector('.ejs_game')
                 if (ecsGame) {
-                    console.log('[EmulatorJS] ✓ Interface do emulador foi criada com sucesso!')
+                    console.log('[EmulatorJS] ✓ Emulator interface created successfully!')
                 } else {
-                    console.warn('[EmulatorJS] ⚠️ Interface do emulador não foi encontrada')
+                    console.warn('[EmulatorJS] ⚠️ Emulator interface not found')
                 }
             }, 500)
         })
 
-        // Listener para erros
+        // Error listener
         window.addEventListener('error', (event) => {
-            console.error('[EmulatorJS] Erro:', event.error)
+            console.error('[EmulatorJS] Error:', event.error)
         })
     </script>
 </body>

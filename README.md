@@ -1,17 +1,17 @@
-# EmulatorJS Plugin para HFS
+# EmulatorJS Plugin for HFS
 
-Um plugin para [HFS (HTTP File Server)](https://github.com/rejetto/hfs) que integra o [EmulatorJS](https://emulatorjs.org/) permitindo executar ROMs de diversos consoles retro diretamente no navegador.
+A plugin for [HFS (HTTP File Server)](https://github.com/rejetto/hfs) that integrates [EmulatorJS](https://emulatorjs.org/) allowing you to run ROMs from various retro consoles directly in the browser.
 
-## 🎮 Recursos
+## 🎮 Features
 
-- ✅ Suporte para múltiplos sistemas (NES, SNES, Mega Drive, PlayStation, e mais)
-- ✅ Integração transparente com HFS
-- ✅ Interface modal integrada ou em nova aba
-- ✅ Menu de contexto para abrir jogos
-- ✅ Suporte para múltiplas versões do EmulatorJS (stable, latest, nightly)
-- ✅ Configurável via painel de admin do HFS
+- ✅ Support for multiple systems (NES, SNES, Mega Drive, PlayStation, and more)
+- ✅ Seamless integration with HFS
+- ✅ Integrated modal or new tab interface
+- ✅ Context menu to open games
+- ✅ Support for multiple EmulatorJS versions (stable, latest, nightly)
+- ✅ Configurable via HFS admin panel
 
-## 🎯 Sistemas Suportados
+## 🎯 Supported Systems
 
 ### Nintendo
 - NES/Famicom (`.nes`, `.fds`)
@@ -37,7 +37,7 @@ Um plugin para [HFS (HTTP File Server)](https://github.com/rejetto/hfs) que inte
 - Lynx (`.lnx`)
 - Jaguar (`.j64`)
 
-### Outros
+### Others
 - PlayStation (`.cue`, `.cimg`)
 - PlayStation Portable (`.pbp`)
 - Arcade/MAME (`.zip`)
@@ -46,67 +46,67 @@ Um plugin para [HFS (HTTP File Server)](https://github.com/rejetto/hfs) que inte
 - Commodore VIC-20 (`.tap`)
 - ColecoVision (`.col`)
 
-## 📦 Instalação
+## 📦 Installation
 
-1. Copie a pasta `emulatorJS-plugin` para `.hfs/plugins/`
+1. Copy the `emulatorJS-plugin` folder to `.hfs/plugins/`
    ```bash
    cp -r emulatorJS-plugin ~/.hfs/plugins/
    ```
 
-2. Reinicie o HFS ou aguarde o recarregamento automático
+2. Restart HFS or wait for automatic reload
 
-3. Acesse o painel de administração do HFS para configurar o plugin
+3. Access the HFS admin panel to configure the plugin
 
-## ⚙️ Configuração
+## ⚙️ Configuration
 
-No painel de administração do HFS, você encontrará as seguintes opções:
+In the HFS admin panel, you will find the following options:
 
-### Ativar EmulatorJS
-- Ativa/desativa o plugin completamente
+### Enable EmulatorJS
+- Activates/deactivates the plugin completely
 
-### Versão do EmulatorJS
-- **Estável** (`stable`): Versão mais estável e testada
-- **Última** (`latest`): Código mais recente com cores estáveis
-- **Nightly** (`nightly`): Código e cores mais recentes (alpha)
+### EmulatorJS Version
+- **Stable** (`stable`): Most stable and tested version
+- **Latest** (`latest`): Most recent code with stable colors
+- **Nightly** (`nightly`): Most recent code and colors (alpha)
 
-### Sistemas Habilitados
-- Lista de sistemas que podem ser emulados (configurável)
+### Enabled Systems
+- List of systems that can be emulated (configurable)
 
-### Usar UI incorporada
-- ✅ Abre o emulador em um modal dentro do HFS
-- ❌ Abre o emulador em uma nova aba do navegador
+### Use Embedded UI
+- ✅ Opens the emulator in a modal within HFS
+- ❌ Opens the emulator in a new browser tab
 
-### Mostrar botão no menu de arquivo
-- Exibe a opção "Emular" no menu de contexto dos arquivos
+### Show button in file menu
+- Displays the "Play" option in the context menu of files
 
-## 🎮 Uso
+## 🎮 Usage
 
-### Via Menu de Contexto
-1. Navegue até uma pasta contendo ROMs
-2. Clique com botão direito em um arquivo ROM suportado
-3. Selecione "Emular (Nome do Sistema)"
+### Via Context Menu
+1. Navigate to a folder containing ROMs
+2. Right-click on a supported ROM file
+3. Select "Play (System Name)"
 
 ### Via Preview
-1. Clique no arquivo ROM para ver o preview
-2. Clique no botão "Abrir no Emulador"
+1. Click on the ROM file to see the preview
+2. Click the "Open in Emulator" button
 
-## 🔧 Estrutura do Plugin
+## 🔧 Plugin Structure
 
 ```
 emulatorJS-plugin/
-├── plugin.js          # Backend do plugin
+├── plugin.js          # Plugin backend
 ├── public/
-│   ├── emulator.js   # Frontend/lógica do emulador
-│   └── emulator.css  # Estilos
-└── README.md         # Este arquivo
+│   ├── emulator.js   # Frontend/emulator logic
+│   └── emulator.css  # Styles
+└── README.md         # This file
 ```
 
-## 📝 Extensões Suportadas
+## 📝 Supported Extensions
 
-O plugin reconhece automaticamente as extensões de arquivo e mapeia para o sistema apropriado:
+The plugin automatically recognizes file extensions and maps them to the appropriate system:
 
-| Extensão | Sistema |
-|----------|---------|
+| Extension | System |
+|----------|--------|
 | .nes, .fds | NES |
 | .snes, .smc | SNES |
 | .gb, .gbc | Game Boy |
@@ -120,58 +120,58 @@ O plugin reconhece automaticamente as extensões de arquivo e mapeia para o sist
 | .zip | Arcade/MAME |
 | .prg, .d64 | Commodore 64 |
 
-## 🌐 CDN do EmulatorJS
+## 🌐 EmulatorJS CDN
 
-O plugin usa o CDN oficial do EmulatorJS em `https://cdn.emulatorjs.org/`.
+The plugin uses the official EmulatorJS CDN at `https://cdn.emulatorjs.org/`.
 
-As versões disponíveis são:
-- `stable`: Versão estável (padrão)
-- `latest`: Último código com cores estáveis
-- `nightly`: Código e cores mais recentes
+Available versions are:
+- `stable`: Stable version (default)
+- `latest`: Latest code with stable colors
+- `nightly`: Latest code and colors
 
-## 📋 Requisitos
+## 📋 Requirements
 
-- HFS v0.51.0 ou superior (API v8.65+)
-- Navegador moderno com suporte a WebGL
-- Conexão com internet para carregar EmulatorJS via CDN
+- HFS v0.51.0 or higher (API v8.65+)
+- Modern browser with WebGL support
+- Internet connection to load EmulatorJS via CDN
 
 ## 🐛 Troubleshooting
 
-### Emulador não carrega
-- Verifique sua conexão com a internet (EmulatorJS é carregado do CDN)
-- Tente mudar a versão do EmulatorJS nas configurações
-- Verifique o console do navegador (F12) para erros
+### Emulator doesn't load
+- Check your internet connection (EmulatorJS is loaded from CDN)
+- Try changing the EmulatorJS version in settings
+- Check the browser console (F12) for errors
 
-### Arquivo não é reconhecido
-- Certifique-se de que a extensão do arquivo está correta
-- Verifique a lista de extensões suportadas acima
+### File not recognized
+- Make sure the file extension is correct
+- Check the list of supported extensions above
 
-### Controles não funcionam
-- Consulte a documentação do EmulatorJS em https://emulatorjs.org/docs/
+### Controls don't work
+- See EmulatorJS documentation at https://emulatorjs.org/docs/
 
-## 📄 Licença
+## 📄 License
 
-Este plugin segue a mesma licença do HFS.
+This plugin follows the same license as HFS.
 
-## 🔗 Recursos Úteis
+## 🔗 Useful Resources
 
 - [HFS - HTTP File Server](https://github.com/rejetto/hfs)
 - [EmulatorJS](https://emulatorjs.org/)
-- [Documentação de Plugins HFS](https://github.com/rejetto/hfs/blob/main/dev-plugins.md)
+- [HFS Plugin Development Guide](https://github.com/rejetto/hfs/blob/main/dev-plugins.md)
 
-## 💬 Suporte
+## 💬 Support
 
-Para reportar problemas ou sugerir melhorias, abra uma issue no repositório.
+For reporting issues or suggesting improvements, open an issue in the repository.
 
-## 🎉 Funcionalidades Futuras
+## 🎉 Future Features
 
-- [ ] Suporte para saves sincronizados
-- [ ] Interface de seleção de núcleos personalizados
-- [ ] Suporte para multiplayer online
-- [ ] Gestor de ROMs integrado
-- [ ] Temas personalizados para o emulador
+- [ ] Support for synchronized saves
+- [ ] Custom core selection interface
+- [ ] Online multiplayer support
+- [ ] Integrated ROM manager
+- [ ] Custom emulator themes
 
 ---
 
-**Versão**: 1.0  
-**Última atualização**: Janeiro 2026
+**Version**: 1.0  
+**Last Updated**: January 2026

@@ -1,8 +1,8 @@
 'use strict'; {
-    // Plugin de EmulatorJS para HFS
+    // EmulatorJS Plugin for HFS
     console.log('[EmulatorJS] frontend script loaded')
 
-    // Mapeamento de extensões para sistemas
+    // Mapping of extensions to systems
     const SYSTEM_MAP = {
         // Nintendo
         'nes': { system: 'nes', name: 'NES/Famicom' },
@@ -47,7 +47,7 @@
         'adf': { system: 'amiga', name: 'Commodore Amiga' },
         'tap': { system: 'vic20', name: 'Commodore VIC-20' },
 
-        // Outros
+        // Others
         'col': { system: 'colecovision', name: 'ColecoVision' },
         'a8': { system: 'atari2600', name: 'Atari 2600' },
     }
@@ -55,89 +55,89 @@
     const config = HFS.getPluginConfig()
     const emuVersion = config.emulatorsJsVersion || 'stable'
     const cdnUrl = `https://cdn.emulatorjs.org/${emuVersion}/`
-    // Valores obtidos no topo: não chame HFS.getPluginConfig()/getPluginPublic() dentro de callbacks
+    // Values obtained at the top: do not call HFS.getPluginConfig()/getPluginPublic() inside callbacks
     const pluginPublic = HFS.getPluginPublic()
     const defaultEmuVersion = emuVersion
 
-    // Função para obter o sistema baseado na extensão
+    // Function to get the system based on file extension
     function getSystemFromFile(filename) {
         const ext = filename.split('.').pop().toLowerCase()
         return SYSTEM_MAP[ext]
     }
 
-    // Cria URL da página do emulador que reside no plugin public (evita problemas de CORS)
+    // Create emulator page URL that resides in plugin public (avoids CORS issues)
     function createEmulatorPageUrl(gameUrl, system) {
         const version = defaultEmuVersion || 'stable'
-        const base = pluginPublic || '' // termina com '/'
+        const base = pluginPublic || '' // ends with '/'
 
-        // Garantir que gameUrl seja absoluta (com protocolo e domínio)
+        // Ensure gameUrl is absolute (with protocol and domain)
         let absoluteGameUrl = gameUrl
         if (!gameUrl.startsWith('http://') && !gameUrl.startsWith('https://')) {
-            // Criar URL absoluta usando o origin atual
+            // Create absolute URL using current origin
             absoluteGameUrl = window.location.origin + gameUrl
         }
 
-        // Adicionar ?dl no final para forçar download direto no HFS
+        // Add ?dl at the end to force direct download in HFS
         if (!absoluteGameUrl.includes('?dl')) {
             absoluteGameUrl += '?dl'
         }
 
         const url = base + 'emulator_page.html?game=' + encodeURIComponent(absoluteGameUrl) + '&core=' + encodeURIComponent(system) + '&version=' + encodeURIComponent(version)
-        console.log('[EmulatorJS] URL criada:', url)
-        console.log('[EmulatorJS] - gameUrl original:', gameUrl)
-        console.log('[EmulatorJS] - gameUrl absoluta:', absoluteGameUrl)
+        console.log('[EmulatorJS] URL created:', url)
+        console.log('[EmulatorJS] - original gameUrl:', gameUrl)
+        console.log('[EmulatorJS] - absolute gameUrl:', absoluteGameUrl)
         console.log('[EmulatorJS] - system:', system)
         console.log('[EmulatorJS] - base:', base)
         return url
     }
 
-    // Função para abrir jogo no emulador em nova aba
+    // Function to open game in emulator in new tab
     function openGameInEmulator(entry, gameUrl) {
         const systemInfo = getSystemFromFile(entry.name)
 
         if (!systemInfo) {
-            HFS.toast(`Formato de arquivo não suportado: ${entry.ext}`, 'error')
+            HFS.toast(`File format not supported: ${entry.ext}`, 'error')
             return false
         }
 
-        // Sempre abre em nova aba
-        console.log('[EmulatorJS] Abrindo emulador em nova aba')
+        // Always opens in new tab
+        console.log('[EmulatorJS] Opening emulator in new tab')
         const emulatorUrl = createEmulatorPageUrl(gameUrl, systemInfo.system)
         console.log('[EmulatorJS] URL:', emulatorUrl)
         window.open(emulatorUrl, '_blank')
-        HFS.toast(`Abrindo ${systemInfo.name}...`, 'success')
+        HFS.toast(`Opening ${systemInfo.name}...`, 'success')
 
         return true
     }
 
-    // Hook para adicionar botão 'Jogar' no menu de arquivo
+    // Hook to add 'Play' button in file menu
     if (config.showFileMenu !== false) {
         HFS.onEvent('fileMenu', ({ entry, menu }) => {
-            // Usa config carregada no topo
+            // Use config loaded at the top
             if (config.enabled === false) return
 
             try {
                 const filename = (entry && (entry.name || ''))
-                // Prefer entry.ext quando disponível
+                // Prefer entry.ext when available
                 const ext = (entry && entry.ext) ? entry.ext.toLowerCase() : (filename.includes('.') ? filename.split('.').pop().toLowerCase() : '')
                 const systemInfo = getSystemFromFile(ext || filename)
 
-                // Debug: registra quando fileMenu é chamado
+                // Debug: logs when fileMenu is called
                 console.log('[EmulatorJS] fileMenu called for', filename, 'ext=', ext, 'detected=', !!systemInfo)
 
                 if (!systemInfo || entry.isFolder) return
 
-                // Checa se já existe item 'jogar' para evitar duplicação
-                if (menu.some(i => i && i.id === 'jogar')) return
+                // Check if 'play' item already exists to avoid duplication
+                if (menu.some(i => i && i.id === 'play')) return
 
-                // Adiciona opção 'Jogar' ao topo do menu para ROMs suportadas
+                // Add 'Play' option at the top of menu for supported ROMs
                 const item = {
-                    id: 'jogar',
-                    label: 'Jogar',
+                    id: 'play',
+                    label: 'Play',
                     subLabel: systemInfo.name,
                     icon: 'play',
                     onClick: () => {
-                        console.log('[EmulatorJS] Botão Jogar clicado!')
+                        console.log('[EmulatorJS] Play button clicked!')
                         console.log('[EmulatorJS] - entry.uri:', entry.uri)
                         console.log('[EmulatorJS] - entry:', entry)
                         openGameInEmulator(entry, entry.uri)
@@ -145,13 +145,13 @@
                     }
                 }
 
-                // Inserir no topo para ficar visível
+                // Insert at the top to be visible
                 menu.unshift(item)
             } catch (err) {
-                console.error('[EmulatorJS] erro no fileMenu handler', err)
+                console.error('[EmulatorJS] error in fileMenu handler', err)
             }
         })
     }
 
-    console.log('[EmulatorJS] Plugin carregado com sucesso')
+    console.log('[EmulatorJS] Plugin loaded successfully')
 }
