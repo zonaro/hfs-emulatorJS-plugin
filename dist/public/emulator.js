@@ -706,35 +706,42 @@
                     }
                 }
 
-                // Add 'Game Info' option
-                const gameInfoItem = {
-                    id: 'game-info',
-                    label: 'Game Info',
-                    subLabel: 'View IGDB details',
-                    icon: 'info',
-                    onClick: async () => {
-                        console.log('[EmulatorJS] Game info button clicked!')
-                        await openGameInfoModal(entry)
-                        return true
+                // Add 'Game Info' option (only for admins)
+                // Check if user has admin access via adminUrl property
+                const isAdmin = Boolean(HFS.state.adminUrl)
+
+                if (isAdmin) {
+                    const gameInfoItem = {
+                        id: 'game-info',
+                        label: 'Game Info',
+                        subLabel: 'View IGDB details',
+                        icon: 'info',
+                        onClick: async () => {
+                            console.log('[EmulatorJS] Game info button clicked!')
+                            await openGameInfoModal(entry)
+                            return true
+                        }
                     }
+
+                    // Add 'Set Cover' option (only for admins)
+                    const coverItem = {
+                        id: 'set-cover',
+                        label: 'Set Cover',
+                        subLabel: 'Search IGDB',
+                        icon: 'image',
+                        onClick: async () => {
+                            console.log('[EmulatorJS] Set cover button clicked!')
+                            await openCoverSearchModal(entry)
+                            return true
+                        }
+                    }
+
+                    // Insert admin options at the top
+                    menu.unshift(coverItem)
+                    menu.unshift(gameInfoItem)
                 }
 
-                // Add 'Set Cover' option
-                const coverItem = {
-                    id: 'set-cover',
-                    label: 'Set Cover',
-                    subLabel: 'Search IGDB',
-                    icon: 'image',
-                    onClick: async () => {
-                        console.log('[EmulatorJS] Set cover button clicked!')
-                        await openCoverSearchModal(entry)
-                        return true
-                    }
-                }
-
-                // Insert at the top to be visible
-                menu.unshift(coverItem)
-                menu.unshift(gameInfoItem)
+                // Insert play button at the top to be visible
                 menu.unshift(playItem)
             } catch (err) {
                 console.error('[EmulatorJS] error in fileMenu handler', err)
