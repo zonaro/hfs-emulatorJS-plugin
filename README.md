@@ -1,4 +1,4 @@
-# EmulatorJS Plugin for HFS
+# EmulatorJS Plugin - Emulation and Game Management directly into you HFS
 
 A powerful plugin for [HFS (HTTP File Server)](https://github.com/rejetto/hfs) that integrates [EmulatorJS](https://emulatorjs.org/), enabling you to play ROM files from dozens of classic gaming systems directly in your browser.
 
