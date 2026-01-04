@@ -1,5 +1,24 @@
 /* Estilos para o plugin EmulatorJS */
 
+/* Ícone do controle com suporte a tema claro/escuro */
+:root {
+    --emulatorjs-icon-color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --emulatorjs-icon-color: #ccc;
+    }
+}
+
+/* Container do ícone centralizado na lista */
+.emulatorjs-icon-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
 .emulatorjs-dialog {
     min-width: 80vw !important;
     min-height: 80vh !important;
@@ -31,10 +50,89 @@
     border-radius: 8px;
 }
 
+/* Estilos para o modal de busca de capas */
+.emulatorjs-cover-modal {
+    max-width: 600px !important;
+}
+
+.emulatorjs-cover-modal input[type="text"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.emulatorjs-cover-modal input[type="text"]:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+#covers-results {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background: #f9f9f9;
+}
+
+#covers-results>div {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+#covers-results>div:hover {
+    background-color: #f5f5f5;
+    border-color: #4CAF50;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#covers-results>div.selected {
+    background-color: #e8f5e9;
+    border-color: #4CAF50;
+}
+
+#covers-results img {
+    max-width: 100px;
+    max-height: 150px;
+    margin-top: 8px;
+    border-radius: 3px;
+    display: block;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .emulatorjs-dialog {
         min-width: 95vw !important;
         min-height: 95vh !important;
+    }
+
+    .emulatorjs-cover-modal {
+        max-width: 95vw !important;
+    }
+}
+
+/* Estilos para ícone de controle de jogo quando capa não existe */
+:root {
+    --emulatorjs-icon-color: #999;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --emulatorjs-icon-color: #666;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --emulatorjs-icon-color: #bbb;
     }
 }
