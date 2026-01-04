@@ -473,10 +473,34 @@
                         HFS.customRestCall('saveGameInfo', {
                             romName: entry.name,
                             gameInfo: game
-                        }).then(result => {
+                        }).then(async result => {
                             console.log('[EmulatorJS Game Info] Save result:', result)
                             if (result.success) {
-                                HFS.toast('Game info saved! Refresh to see properties.', 'success')
+                                HFS.toast('Game info saved!', 'success')
+
+                                // Download cover if it doesn't exist
+                                if (game.coverUrl) {
+                                    console.log('[EmulatorJS Game Info] Downloading cover for:', game.name)
+                                    try {
+                                        const setCoverResult = await HFS.customRestCall('setCover', {
+                                            romName: entry.name,
+                                            gameId: game.id,
+                                            coverUrl: game.coverUrl,
+                                            romPath: entry.uri,
+                                            overwrite: false
+                                        })
+
+                                        if (setCoverResult.success) {
+                                            console.log('[EmulatorJS Game Info] Cover downloaded successfully')
+                                            HFS.toast('Cover downloaded successfully!', 'success')
+                                        } else {
+                                            console.log('[EmulatorJS Game Info] Cover already exists or failed to download:', setCoverResult.error)
+                                        }
+                                    } catch (err) {
+                                        console.error('[EmulatorJS Game Info] Error downloading cover:', err)
+                                    }
+                                }
+
                                 setTimeout(() => {
                                     dialog.close()
                                     location.reload()
