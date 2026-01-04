@@ -15,6 +15,7 @@ exports.init = function (api) {
     const publicDir = path.join(__dirname, 'public')
     const coversDir = path.join(__dirname, 'covers')
     const gameInfoDir = path.join(__dirname, 'gameinfo')
+    const folderIconsDir = path.join(__dirname, 'folder-icons')
 
     // Ensure directories exist
     if (!fs.existsSync(coversDir)) {
@@ -22,6 +23,9 @@ exports.init = function (api) {
     }
     if (!fs.existsSync(gameInfoDir)) {
         fs.mkdirSync(gameInfoDir, { recursive: true })
+    }
+    if (!fs.existsSync(folderIconsDir)) {
+        fs.mkdirSync(folderIconsDir, { recursive: true })
     }
 
     // Function to get game info from cache
@@ -498,6 +502,147 @@ exports.init = function (api) {
             } catch (err) {
                 api.log(`[getCover] Error: ${err.message}`)
                 return { success: false, error: err.message, status: 500 }
+            }
+        },
+
+        async setFolderIcon({ folderPath, iconName }) {
+            try {
+                if (!folderPath || !iconName) {
+                    return { success: false, error: 'Missing folderPath or iconName parameter' }
+                }
+
+                api.log(`[setFolderIcon] Setting icon "${iconName}" for folder: ${folderPath}`)
+
+                // Normalize folder path (remove leading/trailing slashes)
+                const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
+
+                // Save icon mapping
+                const mappingFile = path.join(folderIconsDir, 'icon-mappings.json')
+                let mappings = {}
+
+                if (fs.existsSync(mappingFile)) {
+                    try {
+                        const data = fs.readFileSync(mappingFile, 'utf8')
+                        mappings = JSON.parse(data)
+                    } catch (err) {
+                        api.log(`[setFolderIcon] Error reading mappings: ${err.message}`)
+                    }
+                }
+
+                mappings[normalizedPath] = iconName
+                fs.writeFileSync(mappingFile, JSON.stringify(mappings, null, 2), 'utf8')
+
+                api.log(`[setFolderIcon] Icon mapping saved successfully`)
+                return { success: true, message: 'Folder icon set successfully' }
+            } catch (err) {
+                api.log(`[setFolderIcon] Error: ${err.message}`)
+                return { success: false, error: err.message }
+            }
+        },
+
+        async getFolderIcon({ folderPath }) {
+            try {
+                if (!folderPath) {
+                    return { success: false, error: 'Missing folderPath parameter' }
+                }
+
+                api.log(`[getFolderIcon] Getting icon for folder: ${folderPath}`)
+
+                // Normalize folder path
+                const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
+
+                const mappingFile = path.join(folderIconsDir, 'icon-mappings.json')
+
+                if (!fs.existsSync(mappingFile)) {
+                    return { success: false, error: 'No icon mapping found' }
+                }
+
+                const data = fs.readFileSync(mappingFile, 'utf8')
+                const mappings = JSON.parse(data)
+
+                if (mappings[normalizedPath]) {
+                    api.log(`[getFolderIcon] Found icon: ${mappings[normalizedPath]}`)
+                    return { success: true, iconName: mappings[normalizedPath] }
+                }
+
+                return { success: false, error: 'No icon for this folder' }
+            } catch (err) {
+                api.log(`[getFolderIcon] Error: ${err.message}`)
+                return { success: false, error: err.message }
+            }
+        },
+
+        async getAvailableIcons() {
+            try {
+                api.log(`[getAvailableIcons] Listing available console icons`)
+
+                const iconsDir = path.join(publicDir, 'console-icons')
+
+                if (!fs.existsSync(iconsDir)) {
+                    return { success: false, error: 'Icons directory not found' }
+                }
+
+                const files = fs.readdirSync(iconsDir)
+                const iconFiles = files.filter(f => f.endsWith('.png'))
+
+                const icons = iconFiles.map(filename => {
+                    const iconPath = path.join(iconsDir, filename)
+                    let imageData = null
+
+                    try {
+                        const buffer = fs.readFileSync(iconPath)
+                        imageData = buffer.toString('base64')
+                    } catch (err) {
+                        api.log(`[getAvailableIcons] Error reading icon file ${filename}: ${err.message}`)
+                    }
+
+                    return {
+                        filename,
+                        displayName: filename.replace('.png', '').replace(/^(Nintendo|Sony|Sega|Atari|FBNeo) - /, ''),
+                        dataUrl: imageData ? `data:image/png;base64,${imageData}` : null
+                    }
+                })
+
+                api.log(`[getAvailableIcons] Found ${icons.length} icons`)
+                return { success: true, icons }
+            } catch (err) {
+                api.log(`[getAvailableIcons] Error: ${err.message}`)
+                return { success: false, error: err.message }
+            }
+        },
+
+        async getFolderIconImage({ iconName }) {
+            try {
+                if (!iconName) {
+                    return { success: false, error: 'Missing iconName parameter' }
+                }
+
+                api.log(`[getFolderIconImage] Getting icon image: ${iconName}`)
+
+                const iconsDir = path.join(publicDir, 'console-icons')
+                const iconPath = path.join(iconsDir, iconName)
+
+                // Validate path to prevent directory traversal
+                if (!iconPath.startsWith(iconsDir)) {
+                    return { success: false, error: 'Invalid icon name' }
+                }
+
+                if (!fs.existsSync(iconPath)) {
+                    api.log(`[getFolderIconImage] Icon not found: ${iconPath}`)
+                    return { success: false, error: 'Icon not found' }
+                }
+
+                const buffer = fs.readFileSync(iconPath)
+                const imageData = buffer.toString('base64')
+
+                api.log(`[getFolderIconImage] Returning icon image`)
+                return {
+                    success: true,
+                    dataUrl: `data:image/png;base64,${imageData}`
+                }
+            } catch (err) {
+                api.log(`[getFolderIconImage] Error: ${err.message}`)
+                return { success: false, error: err.message }
             }
         }
     }

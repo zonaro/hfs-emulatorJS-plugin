@@ -3,53 +3,68 @@
     console.log('[EmulatorJS] frontend script loaded')
 
     // Mapping of extensions to systems
+    // Each extension can now map to multiple systems [{ system, name }, ...]
+    // When an extension supports multiple systems, multiple Play buttons will be shown
     const SYSTEM_MAP = {
         // Nintendo
-        'nes': { system: 'nes', name: 'NES/Famicom' },
-        'fds': { system: 'nes', name: 'NES/Famicom' },
-        'snes': { system: 'snes', name: 'SNES' },
-        'smc': { system: 'snes', name: 'SNES' },
-        'gb': { system: 'gb', name: 'Game Boy' },
-        'gbc': { system: 'gbc', name: 'Game Boy Color' },
-        'gba': { system: 'gba', name: 'Game Boy Advance' },
-        'n64': { system: 'n64', name: 'Nintendo 64' },
-        'z64': { system: 'n64', name: 'Nintendo 64' },
-        'nds': { system: 'ds', name: 'Nintendo DS' },
-        'vb': { system: 'vb', name: 'Virtual Boy' },
+        'nes': [{ system: 'nes', name: 'NES/Famicom' }],
+        'fds': [{ system: 'nes', name: 'NES/Famicom' }],
+        'snes': [{ system: 'snes', name: 'SNES' }],
+        'smc': [{ system: 'snes', name: 'SNES' }],
+        'md': [{ system: 'segaMD', name: 'Mega Drive' }],
+        'smd': [{ system: 'segaMD', name: 'Mega Drive' }],
+        'gba': [{ system: 'gba', name: 'Game Boy Advance' }],
+        'n64': [{ system: 'n64', name: 'Nintendo 64' }],
+        'z64': [{ system: 'n64', name: 'Nintendo 64' }],
+        'nds': [{ system: 'nds', name: 'Nintendo DS' }],
+        'vb': [{ system: 'vb', name: 'Virtual Boy' }],
 
         // Sega
-        'gen': { system: 'megadrive', name: 'Mega Drive' },
-        'md': { system: 'megadrive', name: 'Mega Drive' },
-        'smd': { system: 'megadrive', name: 'Mega Drive' },
-        'gg': { system: 'gamegear', name: 'Game Gear' },
-        'sms': { system: 'mastersystem', name: 'Master System' },
-        'sat': { system: 'saturn', name: 'Saturn' },
-        '32x': { system: 'sega32x', name: 'Sega 32X' },
+        'gen': [{ system: 'megadrive', name: 'Mega Drive' }],
+        'md': [{ system: 'megadrive', name: 'Mega Drive' }],
+        'smd': [{ system: 'megadrive', name: 'Mega Drive' }],
+        'gg': [{ system: 'gamegear', name: 'Game Gear' }],
+        'sms': [{ system: 'mastersystem', name: 'Master System' }],
+        'sat': [{ system: 'saturn', name: 'Saturn' }],
+        '32x': [{ system: 'sega32x', name: 'Sega 32X' }],
 
         // Atari
-        'a26': { system: 'atarivcs', name: 'Atari 2600' },
-        'a52': { system: 'atari5200', name: 'Atari 5200' },
-        'a78': { system: 'atari7800', name: 'Atari 7800' },
-        'lnx': { system: 'lynx', name: 'Atari Lynx' },
-        'j64': { system: 'jaguar', name: 'Atari Jaguar' },
+        'a26': [{ system: 'atarivcs', name: 'Atari 2600' }],
+        'a52': [{ system: 'atari5200', name: 'Atari 5200' }],
+        'a78': [{ system: 'atari7800', name: 'Atari 7800' }],
+        'lnx': [{ system: 'lynx', name: 'Atari Lynx' }],
+        'j64': [{ system: 'jaguar', name: 'Atari Jaguar' }],
+
+        // PlayStation & Mega Drive
+        // .bin files can be PS1 games or Mega Drive games
+        'bin': [
+            { system: 'psx', name: 'PlayStation' },
+            { system: 'segaMD', name: 'Mega Drive' }
+        ],
+        'iso': [
+            { system: 'psx', name: 'PlayStation' }
+        ],
+        'img': [
+            { system: 'psx', name: 'PlayStation' }
+        ],
 
         // PlayStation
-        'cue': { system: 'psx', name: 'PlayStation' },
-        'cimg': { system: 'psx', name: 'PlayStation' },
-        'pbp': { system: 'psp', name: 'PlayStation Portable' },
+        'cue': [{ system: 'psx', name: 'PlayStation' }],
+        'cimg': [{ system: 'psx', name: 'PlayStation' }],
+        'pbp': [{ system: 'psp', name: 'PlayStation Portable' }],
 
         // Arcade
-        'zip': { system: 'arcade', name: 'Arcade/MAME' },
+        'zip': [{ system: 'arcade', name: 'Arcade/MAME' }],
 
         // Commodore
-        'prg': { system: 'c64', name: 'Commodore 64' },
-        'd64': { system: 'c64', name: 'Commodore 64' },
-        'adf': { system: 'amiga', name: 'Commodore Amiga' },
-        'tap': { system: 'vic20', name: 'Commodore VIC-20' },
+        'prg': [{ system: 'c64', name: 'Commodore 64' }],
+        'd64': [{ system: 'c64', name: 'Commodore 64' }],
+        'adf': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'tap': [{ system: 'vic20', name: 'Commodore VIC-20' }],
 
         // Others
-        'col': { system: 'colecovision', name: 'ColecoVision' },
-        'a8': { system: 'atari2600', name: 'Atari 2600' },
+        'col': [{ system: 'colecovision', name: 'ColecoVision' }],
+        'a8': [{ system: 'atari2600', name: 'Atari 2600' }],
     }
 
     const config = HFS.getPluginConfig()
@@ -60,9 +75,18 @@
     const defaultEmuVersion = emuVersion
 
     // Function to get the system based on file extension
+    // Returns a single system (for backwards compatibility)
     function getSystemFromFile(filename) {
         const ext = filename.split('.').pop().toLowerCase()
-        return SYSTEM_MAP[ext]
+        const systems = SYSTEM_MAP[ext]
+        return systems && systems.length > 0 ? systems[0] : null
+    }
+
+    // Function to get all systems that can run a file with a given extension
+    // Returns an array of systems
+    function getAllSystemsFromFile(filename) {
+        const ext = filename.split('.').pop().toLowerCase()
+        return SYSTEM_MAP[ext] || []
     }
 
     // Create emulator page URL that resides in plugin public (avoids CORS issues)
@@ -705,29 +729,60 @@
                 const filename = (entry && (entry.name || ''))
                 // Prefer entry.ext when available
                 const ext = (entry && entry.ext) ? entry.ext.toLowerCase() : (filename.includes('.') ? filename.split('.').pop().toLowerCase() : '')
-                const systemInfo = getSystemFromFile(ext || filename)
+                const allSystems = getAllSystemsFromFile(ext || filename)
 
                 // Debug: logs when fileMenu is called
-                console.log('[EmulatorJS] fileMenu called for', filename, 'ext=', ext, 'detected=', !!systemInfo)
+                console.log('[EmulatorJS] fileMenu called for', filename, 'ext=', ext, 'detected systems=', allSystems.length)
 
-                if (!systemInfo || entry.isFolder) return
+                if (!allSystems || allSystems.length === 0 || entry.isFolder) return
 
-                // Check if 'play' item already exists to avoid duplication
-                if (menu.some(i => i && i.id === 'play')) return
+                // Check if any play-related item already exists to avoid duplication
+                if (menu.some(i => i && (i.id === 'play' || i.id?.startsWith('play-')))) return
 
-                // Add 'Play' option at the top of menu for supported ROMs
-                const playItem = {
-                    id: 'play',
-                    label: 'Play',
-                    subLabel: systemInfo.name,
-                    icon: 'play',
-                    onClick: () => {
-                        console.log('[EmulatorJS] Play button clicked!')
-                        console.log('[EmulatorJS] - entry.uri:', entry.uri)
-                        console.log('[EmulatorJS] - entry:', entry)
-                        openGameInEmulator(entry, entry.uri)
-                        return true
+                // Create Play buttons for each compatible system
+                const playItems = []
+
+                // If there's only one system, create a simple Play button
+                if (allSystems.length === 1) {
+                    const systemInfo = allSystems[0]
+                    const playItem = {
+                        id: 'play',
+                        label: 'Play',
+                        subLabel: systemInfo.name,
+                        icon: 'play',
+                        onClick: () => {
+                            console.log('[EmulatorJS] Play button clicked!')
+                            console.log('[EmulatorJS] - entry.uri:', entry.uri)
+                            console.log('[EmulatorJS] - entry:', entry)
+                            openGameInEmulator(entry, entry.uri)
+                            return true
+                        }
                     }
+                    playItems.push(playItem)
+                } else {
+                    // If there are multiple systems, create a Play button for each one
+                    allSystems.forEach((systemInfo, index) => {
+                        const playItem = {
+                            id: `play-${index}`,
+                            label: 'Play',
+                            subLabel: systemInfo.name,
+                            icon: 'play',
+                            onClick: () => {
+                                console.log(`[EmulatorJS] Play button clicked for ${systemInfo.name}!`)
+                                console.log('[EmulatorJS] - entry.uri:', entry.uri)
+                                console.log('[EmulatorJS] - entry:', entry)
+                                console.log('[EmulatorJS] - system:', systemInfo.system)
+
+                                // Open the game with the specific system selected
+                                const emulatorUrl = createEmulatorPageUrl(entry.uri, systemInfo.system)
+                                console.log('[EmulatorJS] URL:', emulatorUrl)
+                                window.open(emulatorUrl, '_blank')
+                                HFS.toast(`Opening ${systemInfo.name}...`, 'success')
+                                return true
+                            }
+                        }
+                        playItems.push(playItem)
+                    })
                 }
 
                 // Add 'Game Info' option (only for admins)
@@ -765,8 +820,11 @@
                     menu.unshift(gameInfoItem)
                 }
 
-                // Insert play button at the top to be visible
-                menu.unshift(playItem)
+                // Insert play buttons at the top to be visible
+                // Insert in reverse order so they appear in the correct order
+                playItems.reverse().forEach(playItem => {
+                    menu.unshift(playItem)
+                })
             } catch (err) {
                 console.error('[EmulatorJS] error in fileMenu handler', err)
             }
@@ -996,6 +1054,259 @@
             return HFS.h(CoverIcon)
         } catch (err) {
             console.error('[EmulatorJS] erro no handler entryIcon', err)
+            return undefined
+        }
+    })
+
+    // Função para verificar se uma pasta contém arquivos compatíveis com emuladores
+    async function folderHasCompatibleRoms(folderUri) {
+        try {
+            console.log('[EmulatorJS] Checking folder for compatible ROMs:', folderUri)
+
+            // Fazer requisição para listar os arquivos da pasta em plain text
+            const response = await fetch(folderUri + '?get=list&folders=0')
+            if (!response.ok) {
+                console.log('[EmulatorJS] Failed to fetch folder contents')
+                return false
+            }
+
+            const text = await response.text()
+            const fileExtensions = Object.keys(SYSTEM_MAP)
+
+            // Processar cada linha (arquivo)
+            const lines = text.split('\n')
+            for (const line of lines) {
+                const filename = line.trim()
+                if (!filename) continue
+
+                // Extrair extensão do arquivo
+                const ext = filename.includes('.') ? filename.split('.').pop().toLowerCase() : ''
+
+                if (fileExtensions.includes(ext)) {
+                    console.log('[EmulatorJS] Found compatible ROM:', filename)
+                    return true
+                }
+            }
+
+            console.log('[EmulatorJS] No compatible ROMs found in folder')
+            return false
+        } catch (err) {
+            console.error('[EmulatorJS] Error checking folder contents:', err)
+            return false
+        }
+    }
+
+    // Função para abrir modal de seleção de ícone
+    async function openIconSelectionModal(folderEntry) {
+        try {
+            console.log('[EmulatorJS] Opening icon selection modal for folder:', folderEntry.name)
+
+            const { dialogLib } = HFS
+
+            // Buscar ícones disponíveis
+            const result = await HFS.customRestCall('getAvailableIcons')
+            if (!result.success || !result.icons || result.icons.length === 0) {
+                HFS.toast('No console icons available', 'error')
+                return
+            }
+
+            const icons = result.icons
+            let dialog = null
+
+            // Criar container para os ícones
+            const iconsContainer = document.createElement('div')
+            iconsContainer.style.display = 'grid'
+            iconsContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(100px, 1fr))'
+            iconsContainer.style.gap = '15px'
+            iconsContainer.style.padding = '20px'
+            iconsContainer.style.maxHeight = '500px'
+            iconsContainer.style.overflowY = 'auto'
+
+            // Criar elemento para cada ícone
+            icons.forEach(icon => {
+                const iconDiv = document.createElement('div')
+                iconDiv.style.display = 'flex'
+                iconDiv.style.flexDirection = 'column'
+                iconDiv.style.alignItems = 'center'
+                iconDiv.style.cursor = 'pointer'
+                iconDiv.style.padding = '10px'
+                iconDiv.style.borderRadius = '8px'
+                iconDiv.style.border = '2px solid transparent'
+                iconDiv.style.transition = 'all 0.2s'
+
+                const img = document.createElement('img')
+                img.src = icon.dataUrl
+                img.alt = icon.displayName
+                img.style.width = '64px'
+                img.style.height = '64px'
+                img.style.objectFit = 'contain'
+                img.style.filter = 'invert(0.8)'
+                img.style.marginBottom = '8px'
+
+                const label = document.createElement('div')
+                label.textContent = icon.displayName
+                label.style.fontSize = '11px'
+                label.style.textAlign = 'center'
+                label.style.wordWrap = 'break-word'
+                label.style.maxWidth = '100px'
+
+                iconDiv.appendChild(img)
+                iconDiv.appendChild(label)
+
+                iconDiv.addEventListener('click', async () => {
+                    try {
+                        console.log('[EmulatorJS] Setting icon:', icon.filename)
+
+                        const setResult = await HFS.customRestCall('setFolderIcon', {
+                            folderPath: folderEntry.uri || folderEntry.url,
+                            iconName: icon.filename
+                        })
+
+                        if (setResult.success) {
+                            HFS.toast('Console icon set successfully!', 'success')
+                            dialog.close()
+                            setTimeout(() => location.reload(), 500)
+                        } else {
+                            HFS.toast('Failed to set icon: ' + (setResult.error || 'Unknown error'), 'error')
+                        }
+                    } catch (err) {
+                        console.error('[EmulatorJS] Error setting folder icon:', err)
+                        HFS.toast('Error setting icon', 'error')
+                    }
+                })
+
+                iconDiv.addEventListener('mouseover', () => {
+                    iconDiv.style.borderColor = '#2196F3'
+                    iconDiv.style.backgroundColor = 'rgba(33, 150, 243, 0.1)'
+                })
+
+                iconDiv.addEventListener('mouseout', () => {
+                    iconDiv.style.borderColor = 'transparent'
+                    iconDiv.style.backgroundColor = 'transparent'
+                })
+
+                iconsContainer.appendChild(iconDiv)
+            })
+
+            // Criar diálogo
+            dialog = dialogLib.newDialog({
+                title: 'Select Console Icon',
+                className: 'emulatorjs-icon-modal',
+                buttons: [
+                    {
+                        text: 'Cancel',
+                        onclick: () => {
+                            console.log('[EmulatorJS] Icon selection cancelled')
+                            dialog.close()
+                        }
+                    }
+                ]
+            })
+
+            // Adicionar conteúdo ao diálogo
+            setTimeout(() => {
+                const dialogElement = document.querySelector('[role="dialog"]')
+                if (dialogElement) {
+                    const contentArea = dialogElement.querySelector('main') || dialogElement.querySelector('[role="presentation"]') || dialogElement.querySelector('.dialog-content')
+                    if (contentArea) {
+                        contentArea.appendChild(iconsContainer)
+                    }
+                }
+            }, 100)
+        } catch (err) {
+            console.error('[EmulatorJS] Error in icon selection modal:', err)
+            HFS.toast('Error opening icon selection', 'error')
+        }
+    }
+    if (config.showFileMenu !== false) {
+        HFS.onEvent('fileMenu', async ({ entry, menu }) => {
+            try {
+                // Verificar se é uma pasta
+                if (!entry.isFolder) return
+
+                // Verificar se a pasta tem arquivos compatíveis
+                const hasRoms = await folderHasCompatibleRoms(entry.uri || entry.url)
+                if (!hasRoms) return
+
+                // Verificar se o usuário é admin
+                const isAdmin = Boolean(HFS.state.adminUrl)
+                if (!isAdmin) return
+
+                console.log('[EmulatorJS] Adding "Set Console Icon" option for folder:', entry.name)
+
+                // Adicionar item de menu
+                const iconItem = {
+                    id: 'set-console-icon',
+                    label: 'Set Console Icon',
+                    subLabel: 'Choose an icon for this folder',
+                    icon: 'image',
+                    onClick: async () => {
+                        console.log('[EmulatorJS] Set Console Icon clicked!')
+                        await openIconSelectionModal(entry)
+                        return true
+                    }
+                }
+
+                menu.unshift(iconItem)
+            } catch (err) {
+                console.error('[EmulatorJS] error in fileMenu handler for folders', err)
+            }
+        })
+    }
+
+    // Hook para aplicar ícone customizado às pastas
+    HFS.onEvent('entryIcon', async ({ entry }) => {
+        try {
+            // Aplicar apenas para pastas
+            if (!entry.isFolder) return undefined
+
+            // Tentar buscar ícone customizado
+            const result = await HFS.customRestCall('getFolderIcon', {
+                folderPath: entry.uri || entry.url
+            })
+
+            if (result.success && result.iconName) {
+                console.log('[EmulatorJS] Applying custom icon to folder:', entry.name, result.iconName)
+
+                // Buscar a imagem em base64
+                const imageResult = await HFS.customRestCall('getFolderIconImage', {
+                    iconName: result.iconName
+                })
+
+                if (imageResult.success && imageResult.dataUrl) {
+                    // Estilos do container (igual ao das capas)
+                    const containerStyle = {
+                        width: '80px',
+                        minHeight: '100px',
+                        borderRadius: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'transparent',
+                        overflow: 'hidden',
+                        margin: '0 auto'
+                    }
+
+                    return HFS.h('div', {
+                        className: 'emulatorjs-icon-container',
+                        style: containerStyle
+                    }, HFS.h('img', {
+                        src: imageResult.dataUrl,
+                        alt: 'Console Icon',
+                        style: {
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                            borderRadius: '2px',
+                            filter: 'invert(0.7)'
+                        }
+                    }))
+                }
+            }
+
+            return undefined
+        } catch (err) {
+            // Silenciosamente falhar para não quebrar a interface
             return undefined
         }
     })
