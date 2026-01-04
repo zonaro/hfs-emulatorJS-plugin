@@ -164,7 +164,7 @@ Covers are stored in the plugin's data directory with the ROM filename as the fo
 
 ### Setting Folder Icons (Admin Only)
 
-1. Right-click on a folder containing ROMs
+1. Click on a folder containing ROMs
 2. Select **"Set Folder Icon"** from the context menu
 3. Search for a console system (the plugin auto-detects compatible systems in the folder)
 4. Click to select the console icon
@@ -177,16 +177,16 @@ Supported console icons include all major systems: NES, SNES, Genesis, PlayStati
 ### Playing Games
 
 1. Navigate to a folder containing ROM files in HFS
-2. Right-click on any supported ROM file
+2. Click on any supported ROM file
 3. Select **"Play"** (or the specific system name if multiple systems are supported for that file type)
 4. The game will open in EmulatorJS in a new browser tab
 5. Use standard emulator controls (see EmulatorJS documentation for system-specific controls)
 
-**Multi-System Support:** Some file formats (`.bin`, `.cue`, `.chd`, `.exe`) can run on multiple systems. When you right-click such a file, you'll see multiple "Play" options, each for a different system.
+**Multi-System Support:** Some file formats (`.bin`, `.cue`, `.chd`, `.exe`) can run on multiple systems. When you click such a file, you'll see multiple "Play" options, each for a different system.
 
 ### Viewing Game Information (Admin Only)
 
-1. Right-click on a ROM file
+1. Click on a ROM file
 2. Select **"Game Info"** from the context menu
 3. Type a game name (minimum 3 characters) to search IGDB
 4. Browse detailed information including:
