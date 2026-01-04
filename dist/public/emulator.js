@@ -499,7 +499,7 @@
             // Componente React que carrega a capa de forma assíncrona
             const CoverIcon = () => {
                 const cacheKey = romName
-                
+
                 // Hook para carregar a capa
                 const [cover, setCover] = HFS.React.useState(coverCache[cacheKey] || null)
                 const [loading, setLoading] = HFS.React.useState(!coverCache[cacheKey])
