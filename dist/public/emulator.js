@@ -1246,6 +1246,68 @@
         }
     }
 
+    // Função para detectar quais consoles estão presentes na pasta
+    async function detectFolderConsoles(folderUri) {
+        try {
+            console.log('[EmulatorJS] Detecting consoles in folder:', folderUri)
+
+            const response = await fetch(folderUri + '?get=list&folders=0')
+            if (!response.ok) {
+                return []
+            }
+
+            const text = await response.text()
+            const detectedConsoles = new Set()
+
+            // Mapeamento de extensão para nomes de console
+            const extToConsoleName = {
+                'nes': 'Nintendo Entertainment System',
+                'fds': 'Nintendo Entertainment System',
+                'snes': 'Super Nintendo Entertainment System',
+                'smc': 'Super Nintendo Entertainment System',
+                'md': 'Mega Drive',
+                'smd': 'Mega Drive',
+                'gen': 'Mega Drive',
+                'gba': 'Game Boy Advance',
+                'n64': 'Nintendo 64',
+                'z64': 'Nintendo 64',
+                'nds': 'Nintendo DS',
+                'gbc': 'Game Boy Color',
+                'gb': 'Game Boy',
+                'iso': 'PlayStation',
+                'bin': 'PlayStation',
+                'img': 'PlayStation',
+                'cue': 'PlayStation',
+                'pbp': 'PlayStation Portable',
+                'zip': 'Arcade',
+                'sat': 'Saturn',
+                'gg': 'Game Gear',
+                'sms': 'Master System',
+                'a26': 'Atari 2600',
+                'col': 'ColecoVision'
+            }
+
+            const lines = text.split('\n')
+            for (const line of lines) {
+                const filename = line.trim()
+                if (!filename) continue
+
+                const ext = filename.includes('.') ? filename.split('.').pop().toLowerCase() : ''
+                const consoleName = extToConsoleName[ext]
+                if (consoleName) {
+                    detectedConsoles.add(consoleName)
+                }
+            }
+
+            const consoles = Array.from(detectedConsoles)
+            console.log('[EmulatorJS] Detected consoles:', consoles)
+            return consoles
+        } catch (err) {
+            console.error('[EmulatorJS] Error detecting consoles:', err)
+            return []
+        }
+    }
+
     // Função para abrir modal de seleção de ícone
     async function openIconSelectionModal(folderEntry) {
         try {
@@ -1260,8 +1322,40 @@
                 return
             }
 
+            // Detectar consoles na pasta
+            const detectedConsoles = await detectFolderConsoles(folderEntry.uri || folderEntry.url)
+            let initialSearchValue = ''
+            if (detectedConsoles.length === 1) {
+                initialSearchValue = detectedConsoles[0]
+            }
+
             const icons = result.icons
             let dialog = null
+            let searchInput = null
+
+            // Criar container para busca e ícones
+            const mainContainer = document.createElement('div')
+            mainContainer.style.display = 'flex'
+            mainContainer.style.flexDirection = 'column'
+            mainContainer.style.height = '100%'
+
+            // Criar barra de busca
+            const searchContainer = document.createElement('div')
+            searchContainer.style.padding = '15px'
+            searchContainer.style.borderBottom = '1px solid #ddd'
+
+            searchInput = document.createElement('input')
+            searchInput.type = 'text'
+            searchInput.placeholder = 'Search console...'
+            searchInput.value = initialSearchValue
+            searchInput.style.width = '100%'
+            searchInput.style.padding = '10px'
+            searchInput.style.fontSize = '14px'
+            searchInput.style.border = '1px solid #ccc'
+            searchInput.style.borderRadius = '4px'
+            searchInput.style.boxSizing = 'border-box'
+
+            searchContainer.appendChild(searchInput)
 
             // Criar container para os ícones
             const iconsContainer = document.createElement('div')
@@ -1269,74 +1363,108 @@
             iconsContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(100px, 1fr))'
             iconsContainer.style.gap = '15px'
             iconsContainer.style.padding = '20px'
-            iconsContainer.style.maxHeight = '500px'
+            iconsContainer.style.maxHeight = '400px'
             iconsContainer.style.overflowY = 'auto'
+            iconsContainer.style.flex = '1'
 
-            // Criar elemento para cada ícone
-            icons.forEach(icon => {
-                const iconDiv = document.createElement('div')
-                iconDiv.style.display = 'flex'
-                iconDiv.style.flexDirection = 'column'
-                iconDiv.style.alignItems = 'center'
-                iconDiv.style.cursor = 'pointer'
-                iconDiv.style.padding = '10px'
-                iconDiv.style.borderRadius = '8px'
-                iconDiv.style.border = '2px solid transparent'
-                iconDiv.style.transition = 'all 0.2s'
+            // Função para filtrar e exibir ícones
+            function updateIconsDisplay(searchTerm) {
+                iconsContainer.innerHTML = ''
+                const searchLower = searchTerm.toLowerCase()
 
-                const img = document.createElement('img')
-                img.src = icon.dataUrl
-                img.alt = icon.displayName
-                img.style.width = '64px'
-                img.style.height = '64px'
-                img.style.objectFit = 'contain'
-                img.style.filter = 'invert(0.8)'
-                img.style.marginBottom = '8px'
-
-                const label = document.createElement('div')
-                label.textContent = icon.displayName
-                label.style.fontSize = '11px'
-                label.style.textAlign = 'center'
-                label.style.wordWrap = 'break-word'
-                label.style.maxWidth = '100px'
-
-                iconDiv.appendChild(img)
-                iconDiv.appendChild(label)
-
-                iconDiv.addEventListener('click', async () => {
-                    try {
-                        console.log('[EmulatorJS] Setting icon:', icon.filename)
-
-                        const setResult = await HFS.customRestCall('setFolderIcon', {
-                            folderPath: folderEntry.uri || folderEntry.url,
-                            iconName: icon.filename
-                        })
-
-                        if (setResult.success) {
-                            HFS.toast('Console icon set successfully!', 'success')
-                            dialog.close()
-                            setTimeout(() => location.reload(), 500)
-                        } else {
-                            HFS.toast('Failed to set icon: ' + (setResult.error || 'Unknown error'), 'error')
-                        }
-                    } catch (err) {
-                        console.error('[EmulatorJS] Error setting folder icon:', err)
-                        HFS.toast('Error setting icon', 'error')
+                icons.forEach(icon => {
+                    // Filtrar por termo de busca
+                    if (!icon.displayName.toLowerCase().includes(searchLower) &&
+                        !icon.filename.toLowerCase().includes(searchLower)) {
+                        return
                     }
+
+                    const iconDiv = document.createElement('div')
+                    iconDiv.style.display = 'flex'
+                    iconDiv.style.flexDirection = 'column'
+                    iconDiv.style.alignItems = 'center'
+                    iconDiv.style.cursor = 'pointer'
+                    iconDiv.style.padding = '10px'
+                    iconDiv.style.borderRadius = '8px'
+                    iconDiv.style.border = '2px solid transparent'
+                    iconDiv.style.transition = 'all 0.2s'
+
+                    const img = document.createElement('img')
+                    img.src = icon.dataUrl
+                    img.alt = icon.displayName
+                    img.style.width = '64px'
+                    img.style.height = '64px'
+                    img.style.objectFit = 'contain'
+                    img.style.filter = 'invert(0.8)'
+                    img.style.marginBottom = '8px'
+
+                    const label = document.createElement('div')
+                    label.textContent = icon.displayName
+                    label.style.fontSize = '11px'
+                    label.style.textAlign = 'center'
+                    label.style.wordWrap = 'break-word'
+                    label.style.maxWidth = '100px'
+
+                    iconDiv.appendChild(img)
+                    iconDiv.appendChild(label)
+
+                    iconDiv.addEventListener('click', async () => {
+                        try {
+                            console.log('[EmulatorJS] Setting icon:', icon.filename)
+
+                            const setResult = await HFS.customRestCall('setFolderIcon', {
+                                folderPath: folderEntry.uri || folderEntry.url,
+                                iconName: icon.filename
+                            })
+
+                            if (setResult.success) {
+                                HFS.toast('Console icon set successfully!', 'success')
+                                dialog.close()
+                                setTimeout(() => location.reload(), 500)
+                            } else {
+                                HFS.toast('Failed to set icon: ' + (setResult.error || 'Unknown error'), 'error')
+                            }
+                        } catch (err) {
+                            console.error('[EmulatorJS] Error setting folder icon:', err)
+                            HFS.toast('Error setting icon', 'error')
+                        }
+                    })
+
+                    iconDiv.addEventListener('mouseover', () => {
+                        iconDiv.style.borderColor = '#2196F3'
+                        iconDiv.style.backgroundColor = 'rgba(33, 150, 243, 0.1)'
+                    })
+
+                    iconDiv.addEventListener('mouseout', () => {
+                        iconDiv.style.borderColor = 'transparent'
+                        iconDiv.style.backgroundColor = 'transparent'
+                    })
+
+                    iconsContainer.appendChild(iconDiv)
                 })
 
-                iconDiv.addEventListener('mouseover', () => {
-                    iconDiv.style.borderColor = '#2196F3'
-                    iconDiv.style.backgroundColor = 'rgba(33, 150, 243, 0.1)'
-                })
+                // Se não houver resultados
+                if (iconsContainer.children.length === 0) {
+                    const noResults = document.createElement('div')
+                    noResults.style.gridColumn = '1 / -1'
+                    noResults.style.textAlign = 'center'
+                    noResults.style.padding = '20px'
+                    noResults.style.color = '#999'
+                    noResults.textContent = 'No console icons found'
+                    iconsContainer.appendChild(noResults)
+                }
+            }
 
-                iconDiv.addEventListener('mouseout', () => {
-                    iconDiv.style.borderColor = 'transparent'
-                    iconDiv.style.backgroundColor = 'transparent'
-                })
-
-                iconsContainer.appendChild(iconDiv)
+            // Listener para busca em tempo real
+            searchInput.addEventListener('input', (e) => {
+                updateIconsDisplay(e.target.value)
             })
+
+            // Mostrar ícones iniciais
+            updateIconsDisplay(initialSearchValue)
+
+            mainContainer.appendChild(searchContainer)
+            mainContainer.appendChild(iconsContainer)
 
             // Criar diálogo
             dialog = dialogLib.newDialog({
@@ -1359,7 +1487,9 @@
                 if (dialogElement) {
                     const contentArea = dialogElement.querySelector('main') || dialogElement.querySelector('[role="presentation"]') || dialogElement.querySelector('.dialog-content')
                     if (contentArea) {
-                        contentArea.appendChild(iconsContainer)
+                        contentArea.appendChild(mainContainer)
+                        // Dar foco ao input de busca
+                        searchInput.focus()
                     }
                 }
             }, 100)
