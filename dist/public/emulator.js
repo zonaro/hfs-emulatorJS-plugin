@@ -135,6 +135,7 @@
 
         let searchTimeout
         let selectedCover = null
+        let dialog = null  // Will be set after dialog is created
 
         // Create real DOM elements (not React virtual elements)
         const resultsList = document.createElement('div')
@@ -189,7 +190,7 @@
                         item.style.borderColor = '#ddd'
                     })
 
-                    item.addEventListener('click', () => {
+                    item.addEventListener('click', async () => {
                         console.log('[EmulatorJS Cover Modal] Selected game:', game.name)
                         selectedCover = game
                         // Highlight selected
@@ -199,6 +200,39 @@
                         })
                         item.style.backgroundColor = '#e3f2fd'
                         item.style.borderColor = '#1976d2'
+
+                        // Auto-download the cover
+                        console.log('[EmulatorJS Cover Modal] Auto-downloading cover for:', game.name)
+                        try {
+                            item.style.opacity = '0.6'
+                            item.style.pointerEvents = 'none'
+
+                            const result = await HFS.customRestCall('setCover', {
+                                romName: entry.name,
+                                gameId: selectedCover.id,
+                                coverUrl: selectedCover.coverUrl,
+                                romPath: entry.uri
+                            })
+
+                            console.log('[EmulatorJS Cover Modal] setCover result:', result)
+                            if (result.success) {
+                                HFS.toast('Cover downloaded successfully!', 'success')
+                                // Close the dialog and reload
+                                console.log('[EmulatorJS Cover Modal] Closing dialog')
+                                dialog.close()
+                                // Force page refresh to update icons
+                                setTimeout(() => location.reload(), 300)
+                            } else {
+                                HFS.toast('Error: ' + result.error, 'error')
+                                item.style.opacity = '1'
+                                item.style.pointerEvents = 'auto'
+                            }
+                        } catch (err) {
+                            console.error('[EmulatorJS] Cover download error:', err)
+                            HFS.toast('Error downloading cover', 'error')
+                            item.style.opacity = '1'
+                            item.style.pointerEvents = 'auto'
+                        }
                     })
 
                     // Create game name element
@@ -260,7 +294,7 @@
         }
 
         console.log('[EmulatorJS Cover Modal] Creating dialog...')
-        const dialog = dialogLib.newDialog({
+        dialog = dialogLib.newDialog({
             title: 'Search Game Cover',
             className: 'emulatorjs-cover-modal',
             buttons: [
@@ -410,20 +444,26 @@
 
     console.log('[EmulatorJS] Plugin loaded successfully')
 
-    // Hook to display cover as entry icon/thumbnail
+    // Cache para capas já carregadas
+    const coverCache = {}
+
+    // Hook para exibir a capa como ícone da entrada
     HFS.onEvent('entryIcon', ({ entry }) => {
         try {
             const filename = (entry && (entry.name || ''))
             const ext = (entry && entry.ext) ? entry.ext.toLowerCase() : (filename.includes('.') ? filename.split('.').pop().toLowerCase() : '')
             const systemInfo = getSystemFromFile(ext || filename)
 
-            // Only show cover for supported ROM files
+            // Mostrar capa apenas para arquivos ROM suportados
             if (!systemInfo || entry.isFolder) return undefined
 
-            // Extract ROM name without extension
-            const romName = entry.name.substring(0, entry.name.lastIndexOf('.')) || entry.name
+            // Nome completo do ROM com extensão
+            const romName = entry.name
 
-            // SVG icon for game controller (inline)
+            // Caminho completo do arquivo ROM
+            const romPath = entry.url || entry.path || entry.name
+
+            // Ícone SVG do controle de jogo (inline)
             const gameControllerIcon = HFS.h('svg', {
                 viewBox: '0 0 512 512',
                 xmlns: 'http://www.w3.org/2000/svg',
@@ -456,12 +496,43 @@
                 })
             )
 
-            // State to track if cover was loaded
-            let coverData = null
+            // Componente React que carrega a capa de forma assíncrona
+            const CoverIcon = () => {
+                const cacheKey = romName
+                
+                // Hook para carregar a capa
+                const [cover, setCover] = HFS.React.useState(coverCache[cacheKey] || null)
+                const [loading, setLoading] = HFS.React.useState(!coverCache[cacheKey])
 
-            const container = HFS.h('div', {
-                className: 'emulatorjs-icon-container',
-                style: {
+                HFS.React.useEffect(() => {
+                    if (coverCache[cacheKey]) {
+                        setCover(coverCache[cacheKey])
+                        setLoading(false)
+                        return
+                    }
+
+                    setLoading(true)
+                    HFS.customRestCall('getCover', { rom: romName, romPath })
+                        .then(result => {
+                            console.log(`[EmulatorJS] Cover carregada para ${romName}:`, { success: result.success, hasData: !!result.data })
+                            if (result.success && result.data) {
+                                const coverData = {
+                                    src: `data:${result.mimeType || 'image/jpeg'};base64,${result.data}`,
+                                    mimeType: result.mimeType
+                                }
+                                coverCache[cacheKey] = coverData
+                                setCover(coverData)
+                            }
+                            setLoading(false)
+                        })
+                        .catch(err => {
+                            console.error(`[EmulatorJS] Erro ao carregar capa para ${romName}:`, err)
+                            setLoading(false)
+                        })
+                }, [])
+
+                // Estilos do container
+                const containerStyle = {
                     width: '80px',
                     minHeight: '100px',
                     borderRadius: '2px',
@@ -472,33 +543,36 @@
                     overflow: 'hidden',
                     margin: '0 auto'
                 }
-            }, gameControllerIcon)
 
-            // Load cover image asynchronously
-            HFS.customRestCall('getCover', { rom: romName }).then(result => {
-                if (result.success && result.data) {
-                    coverData = result
-                    // Update the container with the image
-                    container.innerHTML = ''
-                    container.appendChild(
+                // Se a capa carregou com sucesso, mostrar
+                if (cover) {
+                    return HFS.h('div', {
+                        className: 'emulatorjs-icon-container',
+                        style: containerStyle
+                    },
                         HFS.h('img', {
-                            src: `data:${result.mimeType || 'image/jpeg'};base64,${result.data}`,
+                            src: cover.src,
                             style: {
                                 width: '100%',
                                 height: '100%',
                                 objectFit: 'cover',
                                 borderRadius: '2px'
-                            }
+                            },
+                            alt: romName
                         })
                     )
                 }
-            }).catch(err => {
-                console.error(`[EmulatorJS] Error getting cover for ${romName}:`, err)
-            })
 
-            return container
+                // Caso contrário, mostrar o ícone do controle
+                return HFS.h('div', {
+                    className: 'emulatorjs-icon-container',
+                    style: containerStyle
+                }, gameControllerIcon)
+            }
+
+            return HFS.h(CoverIcon)
         } catch (err) {
-            console.error('[EmulatorJS] error in entryIcon handler', err)
+            console.error('[EmulatorJS] erro no handler entryIcon', err)
             return undefined
         }
     })

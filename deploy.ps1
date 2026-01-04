@@ -21,13 +21,7 @@ if (-not (Test-Path $destDir)) {
     New-Item -ItemType Directory -Path $destDir -Force | Out-Null
 }
 
-try {
-    # Remove conteudo antigo do destino
-    if (Test-Path $destDir) {
-        Write-Host "Limpando diretorio de destino..." -ForegroundColor Yellow
-        Get-ChildItem -Path $destDir -Recurse | Remove-Item -Force -Recurse
-    }
-    
+try { 
     # Copia os arquivos
     Write-Host "Copiando arquivos..." -ForegroundColor Yellow
     Copy-Item -Path "$sourceDir\*" -Destination $destDir -Recurse -Force
@@ -36,7 +30,8 @@ try {
     Write-Host "Deploy concluido com sucesso!" -ForegroundColor Green
     Write-Host "Plugin copiado para: $destDir" -ForegroundColor Green
     
-} catch {
+}
+catch {
     Write-Host ""
     Write-Host "ERRO durante o deploy: $_" -ForegroundColor Red
     exit 1
