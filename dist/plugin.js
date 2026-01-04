@@ -289,35 +289,7 @@ exports.init = function (api) {
                         }
                     }
                 }
-
-                // Fallback: Try to find local image in ROM directory (legacy paths)
-                const possiblePaths = [
-                    path.join('/ROMS', rom + '.jpg'),
-                    path.join('/ROMS', rom + '.jpeg'),
-                    path.join('/ROMS', rom + '.png'),
-                    path.join('/ROMS/nes', rom + '.jpg'),
-                    path.join('/ROMS/nes', rom + '.jpeg'),
-                    path.join('/ROMS/nes', rom + '.png'),
-                    path.join('/ROMS/snes', rom + '.jpg'),
-                    path.join('/ROMS/snes', rom + '.jpeg'),
-                    path.join('/ROMS/snes', rom + '.png'),
-                    path.join('/Games', rom + '.jpg'),
-                    path.join('/Games', rom + '.jpeg'),
-                    path.join('/Games', rom + '.png'),
-                ]
-
-                for (const imagePath of possiblePaths) {
-                    if (fs.existsSync(imagePath)) {
-                        api.log(`[getCover] Found legacy local image: ${imagePath}`)
-                        const imageData = fs.readFileSync(imagePath)
-                        return {
-                            success: true,
-                            data: imageData.toString('base64'),
-                            mimeType: imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg'
-                        }
-                    }
-                }
-
+ 
                 api.log(`[getCover] Cover not found for ROM: ${rom}`)
                 return { success: false, error: 'Cover not found', status: 404 }
             } catch (err) {
