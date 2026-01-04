@@ -1133,6 +1133,7 @@
 
                 // Hook para carregar a capa
                 const [cover, setCover] = HFS.React.useState(coverCache[cacheKey] || null)
+                const [consoleIcon, setConsoleIcon] = HFS.React.useState(null)
                 const [loading, setLoading] = HFS.React.useState(!coverCache[cacheKey])
 
                 HFS.React.useEffect(() => {
@@ -1161,6 +1162,110 @@
                             setLoading(false)
                         })
                 }, [])
+
+                // Carregar ícone do console quando a capa não está disponível
+                HFS.React.useEffect(() => {
+                    if (cover) return // Não precisa do ícone do console se houver capa
+
+                    const loadConsoleIcon = async () => {
+                        try {
+                            const fileExtension = filename.includes('.') ? filename.split('.').pop().toLowerCase() : ''
+                            const allSystems = getAllSystemsFromFile(fileExtension || filename)
+
+                            // Determinar qual console usar
+                            let consoleToUse = null
+                            let iconFileName = null
+
+                            // 1. Primeiro, tentar buscar ícone customizado da pasta
+                            console.log(`[EmulatorJS] Trying to get folder icon for ${romName}`)
+                            console.log(`[EmulatorJS] entry.url: ${entry.url}`)
+                            console.log(`[EmulatorJS] entry.uri: ${entry.uri}`)
+
+                            let parentPath = null
+                            if (entry.url) {
+                                parentPath = entry.url.substring(0, entry.url.lastIndexOf('/'))
+                            } else if (entry.uri) {
+                                parentPath = entry.uri.substring(0, entry.uri.lastIndexOf('/'))
+                            }
+
+                            console.log(`[EmulatorJS] Extracted parentPath: ${parentPath}`)
+
+                            if (parentPath) {
+                                try {
+                                    const folderIconResult = await HFS.customRestCall('getFolderIcon', {
+                                        folderPath: parentPath
+                                    })
+                                    console.log(`[EmulatorJS] getFolderIcon result:`, folderIconResult)
+                                    if (folderIconResult.success && folderIconResult.iconName) {
+                                        iconFileName = folderIconResult.iconName
+                                        console.log(`[EmulatorJS] Found folder icon: ${iconFileName}`)
+                                    }
+                                } catch (folderErr) {
+                                    console.error(`[EmulatorJS] Error calling getFolderIcon:`, folderErr)
+                                }
+                            }
+
+                            // 2. Se não achou ícone da pasta, tentar usar ícone do console (se há apenas 1)
+                            if (!iconFileName && allSystems.length === 1) {
+                                consoleToUse = allSystems[0].system
+                                // Mapear system para icon filename
+                                const systemToIcon = {
+                                    'nes': 'Nintendo - Nintendo Entertainment System.png',
+                                    'snes': 'Nintendo - Super Nintendo Entertainment System.png',
+                                    'n64': 'Nintendo - Nintendo 64.png',
+                                    'gb': 'Nintendo - Game Boy.png',
+                                    'gba': 'Nintendo - Game Boy Advance.png',
+                                    'nds': 'Nintendo - Nintendo DS.png',
+                                    'vb': 'Nintendo - Virtual Boy.png',
+                                    'segaMD': 'Sega - Mega Drive - Genesis.png',
+                                    'segaMS': 'Sega - Master System - Mark III.png',
+                                    'segaGG': 'Sega - Game Gear.png',
+                                    'segaCD': 'Sega - Mega Drive - Genesis.png',
+                                    'sega32x': 'Sega - Mega Drive - Genesis.png',
+                                    'segaSaturn': 'Sega - Saturn.png',
+                                    'psx': 'Sony - PlayStation.png',
+                                    'psp': 'Sony - PlayStation Portable.png',
+                                    'atari2600': 'Atari - 2600.png',
+                                    'atari5200': 'Atari - 2600.png',
+                                    'atari7800': 'Atari - 2600.png',
+                                    'lynx': 'Atari - 2600.png',
+                                    'jaguar': 'Atari - 2600.png',
+                                    'arcade': 'FBNeo - Arcade Games.png',
+                                    'coleco': 'Nintendo - Nintendo Entertainment System.png',
+                                    'pce': 'Nintendo - Super Nintendo Entertainment System.png',
+                                    'pcfx': 'Nintendo - Super Nintendo Entertainment System.png',
+                                    'ngp': 'SNK - Neo Geo.png',
+                                    'ws': 'Nintendo - Game Boy.png',
+                                    'dos': 'Microsoft - Xbox.png',
+                                    'vice_x64sc': 'Nintendo - Nintendo Entertainment System.png',
+                                    'vice_x128': 'Nintendo - Nintendo Entertainment System.png',
+                                    'amiga': 'Nintendo - Super Nintendo Entertainment System.png',
+                                    '3do': 'Nintendo - Game Boy Color.png',
+                                    'xbox': 'Microsoft - Xbox.png'
+                                }
+                                iconFileName = systemToIcon[consoleToUse]
+                            }
+
+                            // 3. Se conseguiu determinar um ícone, carregar sua imagem
+                            if (iconFileName) {
+                                const iconResult = await HFS.customRestCall('getFolderIconImage', {
+                                    iconName: iconFileName
+                                })
+
+                                if (iconResult.success && iconResult.dataUrl) {
+                                    setConsoleIcon({
+                                        src: iconResult.dataUrl,
+                                        alt: consoleToUse || 'Console Icon'
+                                    })
+                                }
+                            }
+                        } catch (err) {
+                            console.error(`[EmulatorJS] Error loading console icon for ${romName}:`, err)
+                        }
+                    }
+
+                    loadConsoleIcon()
+                }, [cover])
 
                 // Estilos do container
                 const containerStyle = {
@@ -1194,7 +1299,27 @@
                     )
                 }
 
-                // Caso contrário, mostrar o ícone do controle
+                // Se conseguiu carregar o ícone do console, mostrar
+                if (consoleIcon) {
+                    return HFS.h('div', {
+                        className: 'emulatorjs-icon-container',
+                        style: containerStyle
+                    },
+                        HFS.h('img', {
+                            src: consoleIcon.src,
+                            style: {
+                                width: '80%',
+                                height: '80%',
+                                objectFit: 'contain',
+                                borderRadius: '2px',
+                                filter: 'invert(0.8)'
+                            },
+                            alt: consoleIcon.alt
+                        })
+                    )
+                }
+
+                // Caso contrário, mostrar o ícone do controle genérico
                 return HFS.h('div', {
                     className: 'emulatorjs-icon-container',
                     style: containerStyle
@@ -1514,7 +1639,7 @@
 
                 console.log('[EmulatorJS] Adding "Set Console Icon" option for folder:', entry.name)
 
-                // Adicionar item de menu
+                // Adicionar item de menu para definir ícone
                 const iconItem = {
                     id: 'set-console-icon',
                     label: 'Set Console Icon',
@@ -1528,6 +1653,49 @@
                 }
 
                 menu.unshift(iconItem)
+
+                // Verificar se a pasta já tem um ícone customizado
+                const folderPath = entry.uri || entry.url
+                try {
+                    const folderIconResult = await HFS.customRestCall('getFolderIcon', {
+                        folderPath: folderPath
+                    })
+
+                    if (folderIconResult.success && folderIconResult.iconName) {
+                        console.log('[EmulatorJS] Folder has custom icon, adding remove option')
+
+                        // Adicionar item de menu para remover ícone
+                        const removeIconItem = {
+                            id: 'remove-console-icon',
+                            label: 'Remove Console Icon',
+                            subLabel: 'Remove the custom icon from this folder',
+                            icon: 'trash',
+                            onClick: async () => {
+                                console.log('[EmulatorJS] Remove Console Icon clicked!')
+                                try {
+                                    const result = await HFS.customRestCall('removeFolderIcon', {
+                                        folderPath: folderPath
+                                    })
+
+                                    if (result.success) {
+                                        HFS.toast('Console icon removed successfully!', 'success')
+                                        setTimeout(() => location.reload(), 500)
+                                    } else {
+                                        HFS.toast('Error removing icon: ' + (result.error || 'Unknown error'), 'error')
+                                    }
+                                } catch (err) {
+                                    console.error('[EmulatorJS] Error removing folder icon:', err)
+                                    HFS.toast('Error removing icon', 'error')
+                                }
+                                return true
+                            }
+                        }
+
+                        menu.unshift(removeIconItem)
+                    }
+                } catch (err) {
+                    console.error('[EmulatorJS] Error checking folder icon:', err)
+                }
             } catch (err) {
                 console.error('[EmulatorJS] error in fileMenu handler for folders', err)
             }

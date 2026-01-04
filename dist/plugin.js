@@ -644,6 +644,48 @@ exports.init = function (api) {
                 api.log(`[getFolderIconImage] Error: ${err.message}`)
                 return { success: false, error: err.message }
             }
+        },
+
+        async removeFolderIcon({ folderPath }) {
+            try {
+                if (!folderPath) {
+                    return { success: false, error: 'Missing folderPath parameter' }
+                }
+
+                api.log(`[removeFolderIcon] Removing icon for folder: ${folderPath}`)
+
+                // Normalize folder path
+                const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
+
+                const mappingFile = path.join(folderIconsDir, 'icon-mappings.json')
+
+                if (!fs.existsSync(mappingFile)) {
+                    return { success: false, error: 'No icon mapping found' }
+                }
+
+                let mappings = {}
+                try {
+                    const data = fs.readFileSync(mappingFile, 'utf8')
+                    mappings = JSON.parse(data)
+                } catch (err) {
+                    api.log(`[removeFolderIcon] Error reading mappings: ${err.message}`)
+                    return { success: false, error: 'Error reading icon mappings' }
+                }
+
+                if (!mappings[normalizedPath]) {
+                    return { success: false, error: 'No icon set for this folder' }
+                }
+
+                // Remove the icon mapping
+                delete mappings[normalizedPath]
+                fs.writeFileSync(mappingFile, JSON.stringify(mappings, null, 2), 'utf8')
+
+                api.log(`[removeFolderIcon] Icon removed successfully for folder: ${folderPath}`)
+                return { success: true, message: 'Folder icon removed successfully' }
+            } catch (err) {
+                api.log(`[removeFolderIcon] Error: ${err.message}`)
+                return { success: false, error: err.message }
+            }
         }
     }
 

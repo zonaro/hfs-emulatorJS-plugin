@@ -11,3 +11,5 @@
  Busque na documentação do IGBD se precisar implementar funções relacionada as informações de jogos e capas: https://api-docs.igdb.com/#getting-started
 
  Se precisar inspecionar logs do HFS, procure nos arquivos da pasta D:\hfs\logs
+
+ - utilize a task do vscode "Deploy para HFS" para fazer deploy automático do plugin na pasta do HFS e não chamar o arquivo powershell manualmente toda vez
