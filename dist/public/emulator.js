@@ -362,7 +362,7 @@
                     titleP.style.marginBottom = '10px'
                     titleP.style.color = '#666'
                     titleP.style.fontSize = '14px'
-                    titleP.textContent = 'Type at least 3 characters to search:'
+                    titleP.textContent = 'Type at least 3 characters to search or paste image URL:'
                     container.appendChild(titleP)
 
                     // Add input element

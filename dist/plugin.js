@@ -282,10 +282,74 @@ exports.init = function (api) {
         })
     }
 
+    // Check URL content-type to verify if it's an image
+    async function checkUrlContentType(url) {
+        return new Promise((resolve, reject) => {
+            const proto = url.startsWith('https') ? https : http
+
+            const options = {
+                method: 'HEAD',
+                timeout: 5000
+            }
+
+            proto.request(url, options, (res) => {
+                const contentType = res.headers['content-type']
+                resolve(contentType)
+            }).on('error', (err) => {
+                reject(err)
+            }).end()
+        })
+    }
+
     // Custom REST API to search and set covers
     const customRest = {
         async searchCovers({ romName }) {
             try {
+                // Check if romName is actually a direct URL to an image
+                if (romName && (romName.startsWith('http://') || romName.startsWith('https://'))) {
+                    api.log(`[searchCovers] Detected direct URL: ${romName}`)
+
+                    // Validate that the URL points to an image
+                    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+                    const hasImageExtension = imageExtensions.some(ext => {
+                        const urlLower = romName.toLowerCase()
+                        return urlLower.includes(ext)
+                    })
+
+                    if (hasImageExtension) {
+                        // Return the URL as a direct result
+                        return {
+                            success: true,
+                            results: [{
+                                id: 'direct-url',
+                                name: 'Direct URL Image',
+                                coverUrl: romName,
+                                isDirect: true
+                            }]
+                        }
+                    } else {
+                        // Try to verify if it's an image by checking content-type
+                        try {
+                            const contentType = await checkUrlContentType(romName)
+                            if (contentType && contentType.startsWith('image/')) {
+                                api.log(`[searchCovers] URL content-type is image: ${contentType}`)
+                                return {
+                                    success: true,
+                                    results: [{
+                                        id: 'direct-url',
+                                        name: 'Direct URL Image',
+                                        coverUrl: romName,
+                                        isDirect: true
+                                    }]
+                                }
+                            }
+                        } catch (err) {
+                            api.log(`[searchCovers] Could not verify URL: ${err.message}`)
+                        }
+                    }
+                }
+
+                // If not a URL, proceed with normal IGDB search
                 const results = await searchGameCovers(romName)
                 return { success: true, results }
             } catch (err) {
@@ -329,9 +393,44 @@ exports.init = function (api) {
 
         async setCover({ romName, gameId, coverUrl, romPath }) {
             try {
+                // Check if coverUrl is a valid URL
+                let finalCoverUrl = coverUrl
+
+                // If coverUrl looks like a direct URL (starts with http:// or https://), validate it's an image
+                if (coverUrl && (coverUrl.startsWith('http://') || coverUrl.startsWith('https://'))) {
+                    api.log(`[setCover] Detected direct URL: ${coverUrl}`)
+
+                    // Validate that the URL points to an image by checking the extension or content-type
+                    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+                    const hasImageExtension = imageExtensions.some(ext => {
+                        const urlLower = coverUrl.toLowerCase()
+                        return urlLower.includes(ext)
+                    })
+
+                    if (hasImageExtension) {
+                        api.log(`[setCover] Valid image URL detected, will download directly`)
+                        finalCoverUrl = coverUrl
+                    } else {
+                        // Try to verify if it's an image by making a HEAD request
+                        try {
+                            const contentType = await checkUrlContentType(coverUrl)
+                            if (contentType && contentType.startsWith('image/')) {
+                                api.log(`[setCover] URL content-type is image: ${contentType}`)
+                                finalCoverUrl = coverUrl
+                            } else {
+                                return { success: false, error: `URL does not point to a valid image. Content-Type: ${contentType}` }
+                            }
+                        } catch (err) {
+                            api.log(`[setCover] Could not verify URL content-type: ${err.message}`)
+                            // Proceed anyway if we can't check
+                            finalCoverUrl = coverUrl
+                        }
+                    }
+                }
+
                 // Use the full ROM name including extension
                 // Determine image extension from coverUrl
-                const coverExt = coverUrl.includes('.png') ? '.png' : '.jpg'
+                const coverExt = finalCoverUrl.includes('.png') ? '.png' : '.jpg'
                 const coverPath = path.join(coversDir, romName + coverExt)
 
                 // Ensure covers directory exists
@@ -342,7 +441,7 @@ exports.init = function (api) {
                 api.log(`[setCover] Saving cover for ROM: ${romName}`)
                 api.log(`[setCover] Target path: ${coverPath}`)
 
-                await downloadImage(coverUrl, coverPath)
+                await downloadImage(finalCoverUrl, coverPath)
 
                 return { success: true, message: 'Cover saved successfully', coverPath }
             } catch (err) {

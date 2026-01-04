@@ -57,7 +57,7 @@ This is the easiest way to configure the credentials:
    - **IGDB Client ID**: Paste your Client ID from Step 3
    - **IGDB Client Secret**: Paste your Client Secret from Step 3
    
-   ![Admin Panel Example](https://imgur.com/placeholder.png)
+ 
 
 4. **Save Configuration**
    - Click the "Save" button
@@ -71,32 +71,7 @@ This is the easiest way to configure the credentials:
    - Try searching for a game
    - If it works, you're all set!
 
-### Alternative: Environment Variables (Legacy)
-
-If you prefer to use environment variables instead (not recommended), you can still set them before starting HFS:
-
-**Windows (Command Prompt):**
-```batch
-set IGDB_CLIENT_ID=your_actual_client_id_here
-set IGDB_CLIENT_SECRET=your_actual_client_secret_here
-hfs.exe
-```
-
-**Windows (PowerShell):**
-```powershell
-$env:IGDB_CLIENT_ID = "your_actual_client_id_here"
-$env:IGDB_CLIENT_SECRET = "your_actual_client_secret_here"
-.\hfs.exe
-```
-
-**Linux/Mac:**
-```bash
-export IGDB_CLIENT_ID="your_actual_client_id_here"
-export IGDB_CLIENT_SECRET="your_actual_client_secret_here"
-./hfs
-```
-
-**Note**: Admin panel configuration takes priority over environment variables.
+ 
 
 ## Troubleshooting
 
@@ -150,7 +125,7 @@ This usually means:
 - The covers folder has permission issues
 
 **Solution**:
-1. Check if the covers are saved: Navigate to `plugin/covers/` in your HFS plugin folder
+1. Check if the covers are saved: Navigate to `hfs-emulatorJS-plugin/covers/` in your HFS plugin folder
 2. Make sure HFS has write permissions to the plugin folder
 3. Try downloading again
 4. Check the HFS server logs for detailed error messages
@@ -180,8 +155,8 @@ See: https://www.igdb.com/api
 If you don't want to set up IGDB API, you can manually place cover images:
 
 1. Create a `.jpg` or `.png` file with the same name as your ROM
-   - Example: `Super Mario.nes` → `Super Mario.jpg`
-2. Place it in the same folder as the ROM
+   - Example: `Super Mario.nes` → `Super Mario.nes.jpg`
+2. Place it the covers folder in `hfs-emulatorJS-plugin/covers/` on your HFS plugin folder
 3. The plugin will automatically use it as the cover
 
 ## Need Help?
