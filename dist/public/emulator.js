@@ -385,6 +385,292 @@
         }, 100)
     }
 
+    // Function to display game information modal
+    async function openGameInfoModal(entry) {
+        console.log('[EmulatorJS Game Info] Starting openGameInfoModal for entry:', entry.name)
+
+        const { dialogLib } = HFS
+
+        // Function to clean filename
+        function cleanFilename(filename) {
+            let cleaned = filename.substring(0, filename.lastIndexOf('.')) || filename
+            cleaned = cleaned.replace(/\s*\([^)]*\)\s*/g, ' ')
+            cleaned = cleaned.replace(/\s*\[[^\]]*\]\s*/g, ' ')
+            cleaned = cleaned.replace(/\s+/g, ' ').trim()
+            return cleaned
+        }
+
+        const cleanedName = cleanFilename(entry.name)
+        console.log('[EmulatorJS Game Info] Cleaned filename:', cleanedName)
+
+        let selectedGame = null
+        let dialog = null
+
+        const gamesList = document.createElement('div')
+        gamesList.id = 'game-info-list'
+        gamesList.style.maxHeight = '500px'
+        gamesList.style.overflowY = 'auto'
+        gamesList.style.marginTop = '10px'
+        gamesList.style.border = '1px solid #ccc'
+        gamesList.style.padding = '10px'
+        gamesList.style.borderRadius = '4px'
+        gamesList.style.backgroundColor = '#f9f9f9'
+
+        async function performSearch(gameName) {
+            console.log('[EmulatorJS Game Info] performSearch called with:', gameName)
+            try {
+                gamesList.innerHTML = '<p style="text-align:center; color: #999;">Searching...</p>'
+
+                const response = await HFS.customRestCall('searchGameInfo', { gameName: gameName })
+                console.log('[EmulatorJS Game Info] Search response:', response)
+
+                if (!response.success) {
+                    gamesList.innerHTML = `<p style="color:red">Error: ${response.error}</p>`
+                    return
+                }
+
+                if (response.results.length === 0) {
+                    gamesList.innerHTML = '<p style="color: #999;">No results found</p>'
+                    return
+                }
+
+                console.log('[EmulatorJS Game Info] Found results:', response.results.length)
+                gamesList.innerHTML = ''
+                response.results.forEach(game => {
+                    const item = document.createElement('div')
+                    item.style.padding = '12px'
+                    item.style.border = '1px solid #ddd'
+                    item.style.marginBottom = '8px'
+                    item.style.cursor = 'pointer'
+                    item.style.borderRadius = '4px'
+                    item.style.backgroundColor = '#fff'
+                    item.style.transition = 'all 0.2s'
+
+                    item.addEventListener('mouseenter', () => {
+                        item.style.backgroundColor = '#f0f0f0'
+                        item.style.borderColor = '#999'
+                    })
+
+                    item.addEventListener('mouseleave', () => {
+                        if (selectedGame?.id !== game.id) {
+                            item.style.backgroundColor = '#fff'
+                            item.style.borderColor = '#ddd'
+                        }
+                    })
+
+                    item.addEventListener('click', () => {
+                        console.log('[EmulatorJS Game Info] Selected game:', game.name)
+                        selectedGame = game
+                        Array.from(gamesList.children).forEach(child => {
+                            child.style.backgroundColor = '#fff'
+                            child.style.borderColor = '#ddd'
+                        })
+                        item.style.backgroundColor = '#e3f2fd'
+                        item.style.borderColor = '#1976d2'
+
+                        // Auto-save the game info
+                        console.log('[EmulatorJS Game Info] Auto-saving game info for:', entry.name)
+                        HFS.customRestCall('saveGameInfo', {
+                            romName: entry.name,
+                            gameInfo: game
+                        }).then(result => {
+                            console.log('[EmulatorJS Game Info] Save result:', result)
+                            if (result.success) {
+                                HFS.toast('Game info saved! Refresh to see properties.', 'success')
+                                setTimeout(() => {
+                                    dialog.close()
+                                    location.reload()
+                                }, 1000)
+                            } else {
+                                HFS.toast('Error saving game info', 'error')
+                            }
+                        }).catch(err => {
+                            console.error('[EmulatorJS] Save error:', err)
+                            HFS.toast('Error saving game info', 'error')
+                        })
+                    })
+
+                    // Game name
+                    const nameDiv = document.createElement('div')
+                    nameDiv.style.fontWeight = 'bold'
+                    nameDiv.style.marginBottom = '8px'
+                    nameDiv.style.fontSize = '16px'
+                    nameDiv.style.color = '#222'
+                    nameDiv.textContent = game.name
+                    item.appendChild(nameDiv)
+
+                    // Rating
+                    if (game.rating || game.aggregatedRating) {
+                        const ratingDiv = document.createElement('div')
+                        ratingDiv.style.fontSize = '12px'
+                        ratingDiv.style.marginBottom = '4px'
+                        ratingDiv.style.color = '#666'
+                        const userRating = game.rating ? game.rating.toFixed(1) : 'N/A'
+                        const criticRating = game.aggregatedRating ? game.aggregatedRating.toFixed(1) : 'N/A'
+                        ratingDiv.innerHTML = `<strong>Ratings:</strong> User: ${userRating}/100 | Critics: ${criticRating}/100`
+                        item.appendChild(ratingDiv)
+                    }
+
+                    // Summary
+                    if (game.summary) {
+                        const summaryDiv = document.createElement('div')
+                        summaryDiv.style.fontSize = '12px'
+                        summaryDiv.style.marginBottom = '6px'
+                        summaryDiv.style.color = '#555'
+                        summaryDiv.style.lineHeight = '1.4'
+                        summaryDiv.style.maxHeight = '60px'
+                        summaryDiv.style.overflow = 'hidden'
+                        summaryDiv.textContent = game.summary
+                        item.appendChild(summaryDiv)
+                    }
+
+                    // Create info grid
+                    const infoGrid = document.createElement('div')
+                    infoGrid.style.fontSize = '11px'
+                    infoGrid.style.color = '#666'
+                    infoGrid.style.marginTop = '8px'
+                    infoGrid.style.display = 'grid'
+                    infoGrid.style.gridTemplateColumns = '1fr 1fr'
+                    infoGrid.style.gap = '4px'
+
+                    const infoItems = [
+                        ['Genres', game.genres],
+                        ['Platforms', game.platforms],
+                        ['Game Modes', game.gameModes],
+                        ['Themes', game.themes],
+                        ['Developers', game.developers],
+                        ['Publishers', game.publishers],
+                        ['Engines', game.gameEngines],
+                        ['Languages', game.languages],
+                        ['Perspectives', game.playerPerspectives]
+                    ]
+
+                    infoItems.forEach(([label, value]) => {
+                        if (value && value !== 'N/A') {
+                            const infoItem = document.createElement('div')
+                            infoItem.style.padding = '4px 0'
+                            infoItem.innerHTML = `<strong>${label}:</strong> ${value}`
+                            infoItem.style.wordBreak = 'break-word'
+                            infoGrid.appendChild(infoItem)
+                        }
+                    })
+
+                    if (infoGrid.children.length > 0) {
+                        item.appendChild(infoGrid)
+                    }
+
+                    // Cover image
+                    if (game.coverUrl) {
+                        const imgDiv = document.createElement('div')
+                        imgDiv.style.marginTop = '8px'
+                        imgDiv.style.textAlign = 'center'
+                        const img = document.createElement('img')
+                        img.src = game.coverUrl
+                        img.style.maxWidth = '100%'
+                        img.style.maxHeight = '150px'
+                        img.style.borderRadius = '2px'
+                        img.addEventListener('error', () => {
+                            img.style.display = 'none'
+                        })
+                        imgDiv.appendChild(img)
+                        item.appendChild(imgDiv)
+                    }
+
+                    gamesList.appendChild(item)
+                })
+            } catch (err) {
+                console.error('[EmulatorJS] Search error:', err)
+                gamesList.innerHTML = '<p style="color:red">Search failed</p>'
+            }
+        }
+
+        const inputElement = document.createElement('input')
+        inputElement.type = 'text'
+        inputElement.placeholder = 'Search game name...'
+        inputElement.value = cleanedName
+        inputElement.style.width = '100%'
+        inputElement.style.padding = '10px'
+        inputElement.style.marginBottom = '15px'
+        inputElement.style.boxSizing = 'border-box'
+        inputElement.style.borderRadius = '4px'
+        inputElement.style.border = '1px solid #ccc'
+        inputElement.style.fontSize = '14px'
+
+        let searchTimeout
+        inputElement.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout)
+            const query = e.target.value
+            console.log('[EmulatorJS Game Info] Input changed:', query)
+            if (query.length > 2) {
+                searchTimeout = setTimeout(() => performSearch(query), 500)
+            } else {
+                gamesList.innerHTML = ''
+            }
+        })
+
+        // Auto-search with cleaned name
+        if (cleanedName.length > 2) {
+            console.log('[EmulatorJS Game Info] Auto-searching with cleaned name:', cleanedName)
+            setTimeout(() => performSearch(cleanedName), 300)
+        }
+
+        console.log('[EmulatorJS Game Info] Creating dialog...')
+        dialog = dialogLib.newDialog({
+            title: 'Game Information',
+            className: 'emulatorjs-game-info-modal',
+            buttons: [
+                {
+                    text: 'Close',
+                    onclick: () => {
+                        console.log('[EmulatorJS Game Info] Close clicked')
+                        dialog.close()
+                    }
+                }
+            ]
+        })
+
+        console.log('[EmulatorJS Game Info] Dialog created:', !!dialog)
+
+        // Find the dialog element and add content
+        setTimeout(() => {
+            console.log('[EmulatorJS Game Info] setTimeout callback - looking for dialog element')
+            const dialogElement = document.querySelector('[role="dialog"]')
+            console.log('[EmulatorJS Game Info] dialogElement found:', !!dialogElement)
+
+            if (dialogElement) {
+                const contentArea = dialogElement.querySelector('main') || dialogElement.querySelector('[role="presentation"]') || dialogElement.querySelector('.dialog-content')
+                console.log('[EmulatorJS Game Info] contentArea found:', !!contentArea)
+
+                if (contentArea) {
+                    console.log('[EmulatorJS Game Info] Adding content to contentArea')
+                    const container = document.createElement('div')
+                    container.style.padding = '15px'
+                    container.style.overflowY = 'auto'
+                    container.style.maxHeight = '600px'
+
+                    const titleP = document.createElement('p')
+                    titleP.style.marginBottom = '10px'
+                    titleP.style.color = '#666'
+                    titleP.style.fontSize = '14px'
+                    titleP.textContent = 'Search and view detailed game information from IGDB:'
+                    container.appendChild(titleP)
+
+                    container.appendChild(inputElement)
+                    container.appendChild(gamesList)
+
+                    console.log('[EmulatorJS Game Info] container created:', !!container)
+                    contentArea.insertBefore(container, contentArea.firstChild)
+                    inputElement.focus()
+                    console.log('[EmulatorJS Game Info] container inserted and input focused')
+                } else {
+                    console.warn('[EmulatorJS Game Info] contentArea not found')
+                }
+            } else {
+                console.warn('[EmulatorJS Game Info] dialogElement not found')
+            }
+        }, 100)
+    }
+
     // Hook to add 'Play' and 'Set Cover' buttons in file menu
     if (config.showFileMenu !== false) {
         HFS.onEvent('fileMenu', ({ entry, menu }) => {
@@ -420,6 +706,19 @@
                     }
                 }
 
+                // Add 'Game Info' option
+                const gameInfoItem = {
+                    id: 'game-info',
+                    label: 'Game Info',
+                    subLabel: 'View IGDB details',
+                    icon: 'info',
+                    onClick: async () => {
+                        console.log('[EmulatorJS] Game info button clicked!')
+                        await openGameInfoModal(entry)
+                        return true
+                    }
+                }
+
                 // Add 'Set Cover' option
                 const coverItem = {
                     id: 'set-cover',
@@ -435,9 +734,102 @@
 
                 // Insert at the top to be visible
                 menu.unshift(coverItem)
+                menu.unshift(gameInfoItem)
                 menu.unshift(playItem)
             } catch (err) {
                 console.error('[EmulatorJS] error in fileMenu handler', err)
+            }
+        })
+
+        // Add game info properties to file menu
+        HFS.onEvent('fileMenu', ({ entry, props }) => {
+            if (config.enabled === false || entry.isFolder) return
+
+            try {
+                const filename = entry.name
+                const ext = (entry && entry.ext) ? entry.ext.toLowerCase() : (filename.includes('.') ? filename.split('.').pop().toLowerCase() : '')
+                const systemInfo = getSystemFromFile(ext || filename)
+
+                if (!systemInfo) return
+
+                // Try to get cached game info
+                HFS.customRestCall('getGameInfo', { romName: filename })
+                    .then(result => {
+                        if (result.success && result.gameInfo) {
+                            const game = result.gameInfo
+
+                            // Add properties in a specific order
+                            const propsToAdd = []
+
+                            if (game.name) {
+                                propsToAdd.push({ id: 'game-name', label: 'Game Title', value: game.name })
+                            }
+
+                            if (game.rating) {
+                                propsToAdd.push({ id: 'game-rating', label: 'User Rating', value: Math.round(game.rating) + '/100' })
+                            }
+
+                            if (game.aggregatedRating) {
+                                propsToAdd.push({ id: 'game-critic-rating', label: 'Critic Rating', value: Math.round(game.aggregatedRating) + '/100' })
+                            }
+
+                            if (game.genres && game.genres !== 'N/A') {
+                                propsToAdd.push({ id: 'game-genres', label: 'Genres', value: game.genres })
+                            }
+
+                            if (game.platforms && game.platforms !== 'N/A') {
+                                propsToAdd.push({ id: 'game-platforms', label: 'Platforms', value: game.platforms })
+                            }
+
+                            if (game.developers && game.developers !== 'N/A') {
+                                propsToAdd.push({ id: 'game-developers', label: 'Developers', value: game.developers })
+                            }
+
+                            if (game.publishers && game.publishers !== 'N/A') {
+                                propsToAdd.push({ id: 'game-publishers', label: 'Publishers', value: game.publishers })
+                            }
+
+                            if (game.gameModes && game.gameModes !== 'N/A') {
+                                propsToAdd.push({ id: 'game-modes', label: 'Game Modes', value: game.gameModes })
+                            }
+
+                            if (game.themes && game.themes !== 'N/A') {
+                                propsToAdd.push({ id: 'game-themes', label: 'Themes', value: game.themes })
+                            }
+
+                            if (game.playerPerspectives && game.playerPerspectives !== 'N/A') {
+                                propsToAdd.push({ id: 'game-perspectives', label: 'Perspectives', value: game.playerPerspectives })
+                            }
+
+                            if (game.gameEngines && game.gameEngines !== 'N/A') {
+                                propsToAdd.push({ id: 'game-engines', label: 'Game Engines', value: game.gameEngines })
+                            }
+
+                            if (game.languages && game.languages !== 'N/A') {
+                                propsToAdd.push({ id: 'game-languages', label: 'Languages', value: game.languages })
+                            }
+
+                            if (game.releaseDates && game.releaseDates.length > 0) {
+                                propsToAdd.push({ id: 'game-release', label: 'Release Dates', value: game.releaseDates.join(', ') })
+                            }
+
+                            if (game.ageRatings && game.ageRatings !== 'N/A') {
+                                propsToAdd.push({ id: 'game-ratings', label: 'Age Ratings', value: game.ageRatings })
+                            }
+
+                            if (game.alternativeNames && game.alternativeNames !== 'N/A') {
+                                propsToAdd.push({ id: 'game-alt-names', label: 'Alternative Names', value: game.alternativeNames })
+                            }
+
+                            // Add all properties to the props array
+                            propsToAdd.forEach(prop => props.push(prop))
+                        }
+                    })
+                    .catch(err => {
+                        console.error('[EmulatorJS] Error loading game info for menu:', err)
+                    })
+            } catch (err) {
+                console.error('[EmulatorJS] error in fileMenu props handler', err)
             }
         })
     }
