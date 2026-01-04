@@ -2,69 +2,219 @@
     // EmulatorJS Plugin for HFS
     console.log('[EmulatorJS] frontend script loaded')
 
-    // Mapping of extensions to systems
+    // Mapping of extensions to systems (cores)
     // Each extension can now map to multiple systems [{ system, name }, ...]
     // When an extension supports multiple systems, multiple Play buttons will be shown
+    // Based on EmulatorJS documentation: https://emulatorjs.org/docs/systems and https://emulatorjs.org/docs4devs/cores
     const SYSTEM_MAP = {
-        // Nintendo
+        // ===== NINTENDO SYSTEMS =====
+
+        // NES/Famicom - Cores: fceumm (default), nestopia
         'nes': [{ system: 'nes', name: 'NES/Famicom' }],
-        'fds': [{ system: 'nes', name: 'NES/Famicom' }],
+        'fds': [{ system: 'nes', name: 'Famicom Disk System' }],
+        'unif': [{ system: 'nes', name: 'NES/Famicom' }],
+        'unf': [{ system: 'nes', name: 'NES/Famicom' }],
+
+        // SNES/Super Famicom - Cores: snes9x (default), bsnes
         'snes': [{ system: 'snes', name: 'SNES' }],
         'smc': [{ system: 'snes', name: 'SNES' }],
-        'md': [{ system: 'segaMD', name: 'Mega Drive' }],
-        'smd': [{ system: 'segaMD', name: 'Mega Drive' }],
-        'gba': [{ system: 'gba', name: 'Game Boy Advance' }],
+        'sfc': [{ system: 'snes', name: 'Super Famicom' }],
+        'fig': [{ system: 'snes', name: 'SNES' }],
+        'gd3': [{ system: 'snes', name: 'SNES' }],
+        'gd7': [{ system: 'snes', name: 'SNES' }],
+        'dx2': [{ system: 'snes', name: 'SNES' }],
+        'bsx': [{ system: 'snes', name: 'SNES Satellaview' }],
+        'swc': [{ system: 'snes', name: 'SNES' }],
+
+        // Nintendo 64 - Cores: mupen64plus_next (default), parallel-n64
         'n64': [{ system: 'n64', name: 'Nintendo 64' }],
         'z64': [{ system: 'n64', name: 'Nintendo 64' }],
-        'nds': [{ system: 'nds', name: 'Nintendo DS' }],
-        'vb': [{ system: 'vb', name: 'Virtual Boy' }],
+        'v64': [{ system: 'n64', name: 'Nintendo 64' }],
 
-        // Sega
-        'gen': [{ system: 'megadrive', name: 'Mega Drive' }],
-        'md': [{ system: 'megadrive', name: 'Mega Drive' }],
-        'smd': [{ system: 'megadrive', name: 'Mega Drive' }],
-        'gg': [{ system: 'gamegear', name: 'Game Gear' }],
-        'sms': [{ system: 'mastersystem', name: 'Master System' }],
-        'sat': [{ system: 'saturn', name: 'Saturn' }],
+        // Game Boy / Game Boy Color - Cores: gambatte (default), mgba
+        'gb': [{ system: 'gb', name: 'Game Boy' }],
+        'gbc': [{ system: 'gb', name: 'Game Boy Color' }],
+        'sgb': [{ system: 'gb', name: 'Super Game Boy' }],
+
+        // Game Boy Advance - Core: mgba
+        'gba': [{ system: 'gba', name: 'Game Boy Advance' }],
+
+        // Nintendo DS - Cores: melonds (default), desmume2015, desmume
+        'nds': [{ system: 'nds', name: 'Nintendo DS' }],
+
+        // Virtual Boy - Core: beetle_vb
+        'vb': [{ system: 'vb', name: 'Virtual Boy' }],
+        'vboy': [{ system: 'vb', name: 'Virtual Boy' }],
+
+        // ===== SEGA SYSTEMS =====
+
+        // Sega Mega Drive/Genesis - Cores: genesis_plus_gx (default), genesis_plus_gx_wide, picodrive
+        'md': [{ system: 'segaMD', name: 'Sega Mega Drive' }],
+        'smd': [{ system: 'segaMD', name: 'Sega Mega Drive' }],
+        'gen': [{ system: 'segaMD', name: 'Sega Genesis' }],
+        'sg': [{ system: 'segaMD', name: 'Sega Genesis' }],
+
+        // Sega Master System - Cores: smsplus (default), genesis_plus_gx, picodrive
+        'sms': [{ system: 'segaMS', name: 'Sega Master System' }],
+
+        // Sega Game Gear - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
+        'gg': [{ system: 'segaGG', name: 'Sega Game Gear' }],
+
+        // Sega CD - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
+        'cue': [
+            { system: 'segaCD', name: 'Sega CD' },
+            { system: 'psx', name: 'PlayStation' }
+        ],
+        'chd': [
+            { system: 'segaCD', name: 'Sega CD' },
+            { system: 'psx', name: 'PlayStation' }
+        ],
+
+        // Sega 32X - Core: picodrive
         '32x': [{ system: 'sega32x', name: 'Sega 32X' }],
 
-        // Atari
-        'a26': [{ system: 'atarivcs', name: 'Atari 2600' }],
-        'a52': [{ system: 'atari5200', name: 'Atari 5200' }],
-        'a78': [{ system: 'atari7800', name: 'Atari 7800' }],
-        'lnx': [{ system: 'lynx', name: 'Atari Lynx' }],
-        'j64': [{ system: 'jaguar', name: 'Atari Jaguar' }],
+        // Sega Saturn - Core: yabause
+        'ccd': [{ system: 'segaSaturn', name: 'Sega Saturn' }],
+        'mds': [{ system: 'segaSaturn', name: 'Sega Saturn' }],
 
-        // PlayStation & Mega Drive
-        // .bin files can be PS1 games or Mega Drive games
+        // ===== SONY SYSTEMS =====
+
+        // PlayStation - Cores: pcsx_rearmed (default), mednafen_psx_hw
         'bin': [
             { system: 'psx', name: 'PlayStation' },
-            { system: 'segaMD', name: 'Mega Drive' }
+            { system: 'segaMD', name: 'Sega Mega Drive' }
         ],
-        'iso': [
-            { system: 'psx', name: 'PlayStation' }
-        ],
-        'img': [
-            { system: 'psx', name: 'PlayStation' }
-        ],
+        'iso': [{ system: 'psx', name: 'PlayStation' }],
+        'img': [{ system: 'psx', name: 'PlayStation' }],
+        'toc': [{ system: 'psx', name: 'PlayStation' }],
+        'exe': [{ system: 'psx', name: 'PlayStation' }],
+        'm3u': [{ system: 'psx', name: 'PlayStation' }],
 
-        // PlayStation
-        'cue': [{ system: 'psx', name: 'PlayStation' }],
-        'cimg': [{ system: 'psx', name: 'PlayStation' }],
+        // PlayStation Portable - Core: ppsspp (requires threads)
         'pbp': [{ system: 'psp', name: 'PlayStation Portable' }],
+        'cso': [{ system: 'psp', name: 'PlayStation Portable' }],
+        'elf': [{ system: 'psp', name: 'PlayStation Portable' }],
+        'prx': [{ system: 'psp', name: 'PlayStation Portable' }],
 
-        // Arcade
+        // ===== ATARI SYSTEMS =====
+
+        // Atari 2600 - Core: stella2014
+        'a26': [{ system: 'atari2600', name: 'Atari 2600' }],
+        'bin': [
+            { system: 'atari2600', name: 'Atari 2600' },
+            { system: 'psx', name: 'PlayStation' },
+            { system: 'segaMD', name: 'Sega Mega Drive' }
+        ],
+
+        // Atari 5200 - Core: a5200
+        'a52': [{ system: 'atari5200', name: 'Atari 5200' }],
+        'car': [{ system: 'atari5200', name: 'Atari 5200' }],
+
+        // Atari 7800 - Core: prosystem
+        'a78': [{ system: 'atari7800', name: 'Atari 7800' }],
+
+        // Atari Lynx - Core: handy
+        'lnx': [{ system: 'lynx', name: 'Atari Lynx' }],
+        'lyx': [{ system: 'lynx', name: 'Atari Lynx' }],
+        'o': [{ system: 'lynx', name: 'Atari Lynx' }],
+
+        // Atari Jaguar - Core: virtualjaguar
+        'j64': [{ system: 'jaguar', name: 'Atari Jaguar' }],
+        'jag': [{ system: 'jaguar', name: 'Atari Jaguar' }],
+
+        // ===== ARCADE SYSTEMS =====
+
+        // Arcade/MAME - Cores: fbneo (default), fbalpha2012_cps1, fbalpha2012_cps2, mame2003, mame2003_plus
         'zip': [{ system: 'arcade', name: 'Arcade/MAME' }],
+        '7z': [{ system: 'arcade', name: 'Arcade/MAME' }],
 
-        // Commodore
-        'prg': [{ system: 'c64', name: 'Commodore 64' }],
-        'd64': [{ system: 'c64', name: 'Commodore 64' }],
+        // MAME 2003 - Cores: mame2003 (default), mame2003_plus
+        // Uses same extensions as arcade
+
+        // ===== COMMODORE SYSTEMS =====
+
+        // Commodore 64 - Core: vice_x64sc
+        'd64': [{ system: 'vice_x64sc', name: 'Commodore 64' }],
+        'g64': [{ system: 'vice_x64sc', name: 'Commodore 64' }],
+        'x64': [{ system: 'vice_x64sc', name: 'Commodore 64' }],
+        't64': [{ system: 'vice_x64sc', name: 'Commodore 64' }],
+        'tap': [
+            { system: 'vice_x64sc', name: 'Commodore 64' },
+            { system: 'vice_xvic', name: 'Commodore VIC-20' }
+        ],
+        'prg': [
+            { system: 'vice_x64sc', name: 'Commodore 64' },
+            { system: 'vice_x128', name: 'Commodore 128' }
+        ],
+        'p00': [{ system: 'vice_x64sc', name: 'Commodore 64' }],
+        'crt': [{ system: 'vice_x64sc', name: 'Commodore 64' }],
+
+        // Commodore 128 - Core: vice_x128
+        'd81': [{ system: 'vice_x128', name: 'Commodore 128' }],
+
+        // Commodore VIC-20 - Core: vice_xvic
+        // Uses tap and prg extensions (already defined above)
+
+        // Commodore Plus/4 - Core: vice_xplus4
+        // Uses prg, tap extensions
+
+        // Commodore PET - Core: vice_xpet
+        // Uses prg, tap extensions
+
+        // Commodore Amiga - Core: puae
         'adf': [{ system: 'amiga', name: 'Commodore Amiga' }],
-        'tap': [{ system: 'vic20', name: 'Commodore VIC-20' }],
+        'dms': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'fdi': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'ipf': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'adz': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'hdf': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'hdz': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'lha': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'slave': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'info': [{ system: 'amiga', name: 'Commodore Amiga' }],
+        'rp9': [{ system: 'amiga', name: 'Commodore Amiga' }],
 
-        // Others
-        'col': [{ system: 'colecovision', name: 'ColecoVision' }],
-        'a8': [{ system: 'atari2600', name: 'Atari 2600' }],
+        // ===== OTHER SYSTEMS =====
+
+        // 3DO - Core: opera
+        '3do': [{ system: '3do', name: '3DO' }],
+
+        // ColecoVision - Core: gearcoleco
+        'col': [{ system: 'coleco', name: 'ColecoVision' }],
+        'cv': [{ system: 'coleco', name: 'ColecoVision' }],
+        'rom': [{ system: 'coleco', name: 'ColecoVision' }],
+
+        // NEC PC Engine/TurboGrafx-16 - Core: mednafen_pce
+        'pce': [{ system: 'pce', name: 'PC Engine/TurboGrafx-16' }],
+        'sgx': [{ system: 'pce', name: 'PC Engine SuperGrafx' }],
+
+        // NEC PC-FX - Core: mednafen_pcfx
+        'pcfx': [{ system: 'pcfx', name: 'PC-FX' }],
+        'toc': [
+            { system: 'pcfx', name: 'PC-FX' },
+            { system: 'psx', name: 'PlayStation' }
+        ],
+
+        // Neo Geo Pocket - Core: mednafen_ngp
+        'ngp': [{ system: 'ngp', name: 'Neo Geo Pocket' }],
+        'ngc': [{ system: 'ngp', name: 'Neo Geo Pocket Color' }],
+        'ngpc': [{ system: 'ngp', name: 'Neo Geo Pocket Color' }],
+        'npc': [{ system: 'ngp', name: 'Neo Geo Pocket Color' }],
+
+        // WonderSwan - Core: mednafen_wswan
+        'ws': [{ system: 'ws', name: 'WonderSwan' }],
+        'wsc': [{ system: 'ws', name: 'WonderSwan Color' }],
+        'pc2': [{ system: 'ws', name: 'WonderSwan' }],
+
+        // DOSBOX - Core: dosbox_pure (requires special setup)
+        'exe': [
+            { system: 'dos', name: 'DOS' },
+            { system: 'psx', name: 'PlayStation' }
+        ],
+        'com': [{ system: 'dos', name: 'DOS' }],
+        'bat': [{ system: 'dos', name: 'DOS' }],
+        'conf': [{ system: 'dos', name: 'DOS' }],
+        'dosz': [{ system: 'dos', name: 'DOS' }],
     }
 
     const config = HFS.getPluginConfig()
