@@ -214,7 +214,7 @@ exports.init = function (api) {
 
                 api.log(`[getCover] Looking for cover for ROM: ${rom}`)
 
-                // First check in plugin covers directory with both extensions
+                // Check in plugin covers directory with different extensions
                 const coverPathJpg = path.join(coversDir, rom + '.jpg')
                 const coverPathPng = path.join(coversDir, rom + '.png')
                 const coverPathJpeg = path.join(coversDir, rom + '.jpeg')
@@ -249,47 +249,6 @@ exports.init = function (api) {
                     }
                 }
 
-                // Then check in the same folder as the ROM file if romPath is provided
-                if (romPath) {
-                    const romDirectory = path.dirname(romPath)
-                    // Use full ROM name with extension
-                    const romFileName = path.basename(romPath)
-
-                    const localCoverPathJpg = path.join(romDirectory, romFileName + '.jpg')
-                    const localCoverPathPng = path.join(romDirectory, romFileName + '.png')
-                    const localCoverPathJpeg = path.join(romDirectory, romFileName + '.jpeg')
-
-                    if (fs.existsSync(localCoverPathJpg)) {
-                        api.log(`[getCover] Found cover in ROM directory: ${localCoverPathJpg}`)
-                        const imageData = fs.readFileSync(localCoverPathJpg)
-                        return {
-                            success: true,
-                            data: imageData.toString('base64'),
-                            mimeType: 'image/jpeg'
-                        }
-                    }
-
-                    if (fs.existsSync(localCoverPathPng)) {
-                        api.log(`[getCover] Found cover in ROM directory: ${localCoverPathPng}`)
-                        const imageData = fs.readFileSync(localCoverPathPng)
-                        return {
-                            success: true,
-                            data: imageData.toString('base64'),
-                            mimeType: 'image/png'
-                        }
-                    }
-
-                    if (fs.existsSync(localCoverPathJpeg)) {
-                        api.log(`[getCover] Found cover in ROM directory: ${localCoverPathJpeg}`)
-                        const imageData = fs.readFileSync(localCoverPathJpeg)
-                        return {
-                            success: true,
-                            data: imageData.toString('base64'),
-                            mimeType: 'image/jpeg'
-                        }
-                    }
-                }
- 
                 api.log(`[getCover] Cover not found for ROM: ${rom}`)
                 return { success: false, error: 'Cover not found', status: 404 }
             } catch (err) {
