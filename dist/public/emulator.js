@@ -234,33 +234,6 @@
         return SYSTEM_MAP[ext] || []
     }
 
-    // Create emulator page URL that resides in plugin public (avoids CORS issues)
-    function createEmulatorPageUrl(gameUrl, core) {
-
-        // Ensure gameUrl is absolute (with protocol and domain)
-
-        if (!gameUrl.startsWith('http://') && !gameUrl.startsWith('https://')) {
-            // Create absolute URL using current origin
-            gameUrl = window.location.origin + gameUrl
-        }
-
-        // Add ?dl at the end to force direct download in HFS
-        if (!gameUrl.includes('?dl')) {
-            gameUrl += '?dl'
-        }
-
-        // Get username from HFS state
-        const username = (HFS.state && HFS.state.username) || ''
-
-        const url = pluginPublic + 'emulator_page.html?game=' + encodeURIComponent(gameUrl) + '&core=' + encodeURIComponent(core) + '&version=' + encodeURIComponent(emuVersion) + '&username=' + encodeURIComponent(username)
-        console.log('[EmulatorJS] - core:', core)
-        console.log('[EmulatorJS] - username:', username)
-        console.log('[EmulatorJS] - base:', pluginPublic)
-        console.log('[EmulatorJS] URL created:', url)
-        return url
-    }
-
-
     // Function to clean filename
     function cleanFilename(filename) {
         // Remove extension
@@ -591,11 +564,237 @@
     }
 
     function playGameInEmulator(gameUrl, core) {
-
         console.log('[EmulatorJS] playGameInEmulator called with:', gameUrl, core)
-        const emulatorPageUrl = createEmulatorPageUrl(gameUrl, core)
-        console.log('[EmulatorJS] Opening emulator page URL:', emulatorPageUrl)
-        window.open(emulatorPageUrl, '_blank')
+
+        // Ensure gameUrl is absolute (with protocol and domain)
+        if (!gameUrl.startsWith('http://') && !gameUrl.startsWith('https://')) {
+            // Create absolute URL using current origin
+            gameUrl = window.location.origin + gameUrl
+        }
+
+        // Add ?dl at the end to force direct download in HFS
+        if (!gameUrl.includes('?dl')) {
+            gameUrl += '?dl'
+        }
+
+        const { dialogLib } = HFS
+
+
+        // Create game container
+        const gameContainer = document.createElement('div')
+        gameContainer.id = 'emulator-game-container'
+        gameContainer.style.width = '100%'
+        gameContainer.style.height = '600px'
+        gameContainer.style.minHeight = '600px'
+        gameContainer.style.backgroundColor = '#000'
+        gameContainer.style.position = 'relative'
+        gameContainer.style.display = 'flex'
+        gameContainer.style.alignItems = 'center'
+        gameContainer.style.justifyContent = 'center'
+
+        // Variable to store the loaded script for cleanup
+        let emulatorScript = null
+
+
+
+
+        // Create dialog with HFS dialogLib
+        const dialog = dialogLib.newDialog({
+
+            title: `Emulator - ${core} - ${decodeURIComponent(gameUrl.split('/').pop().split('?')[0])}`,
+            className: 'emulatorjs-game-modal',
+            closable: true,
+            onClose: () => {
+                console.log('[EmulatorJS] Dialog closing, destroying emulator...')
+                window.location.reload(); // Simple way to stop and unload the emulator
+            },
+            buttons: [
+                {
+                    text: 'Close',
+                    onclick: () => {
+                        console.log('[EmulatorJS] Closing emulator dialog')
+                        dialog.close()
+                    }
+                }
+            ]
+        })
+
+        console.log('[EmulatorJS] Dialog created:', !!dialog)
+
+        // Add content to dialog after it's rendered
+        setTimeout(() => {
+            const dialogElement = document.querySelector('[role="dialog"]')
+            console.log('[EmulatorJS] dialogElement found:', !!dialogElement)
+
+            if (dialogElement) {
+                // Apply modal size
+                dialogElement.style.width = '75vw'
+                dialogElement.style.height = '75vh'
+                dialogElement.style.maxWidth = '75vw'
+                dialogElement.style.maxHeight = '75vh'
+
+                const contentArea = dialogElement.querySelector('main') || dialogElement.querySelector('[role="presentation"]') || dialogElement.querySelector('.dialog-content')
+                console.log('[EmulatorJS] contentArea found:', !!contentArea)
+
+                if (contentArea) {
+                    // Style content area
+                    contentArea.style.display = 'flex'
+                    contentArea.style.flexDirection = 'column'
+                    contentArea.style.height = '100%'
+                    contentArea.style.padding = '0'
+                    contentArea.style.overflow = 'hidden'
+
+                    // Insert game container
+                    contentArea.insertBefore(gameContainer, contentArea.firstChild)
+
+                    // Now load the emulator
+                    console.log('[EmulatorJS] Loading emulator in dialog...')
+
+
+
+                    // Setup EmulatorJS callbacks
+                    setupEmulatorCallbacks(gameUrl, core)
+
+                    // Load EmulatorJS loader dynamically
+                    emulatorScript = document.createElement('script')
+                    emulatorScript.src = window.EJS_pathtodata + 'loader.js'
+                    // emulatorScript.crossOrigin = 'anonymous'
+                    emulatorScript.onload = () => console.log('[EmulatorJS] loader.js loaded in dialog')
+                    emulatorScript.onerror = (e) => console.error('[EmulatorJS] Failed to load loader.js', e)
+                    document.head.appendChild(emulatorScript)
+                } else {
+                    console.warn('[EmulatorJS] contentArea not found')
+                }
+            } else {
+                console.warn('[EmulatorJS] dialogElement not found')
+            }
+        }, 100)
+    }
+
+    // Setup EmulatorJS callbacks for modal
+    function setupEmulatorCallbacks(gameUrl, core) {
+        // Helper function to convert buffer to base64
+        function b64(buf) {
+            if (buf instanceof Uint8Array) buf = buf.buffer;
+            const bytes = new Uint8Array(buf);
+            const chunkSize = 0x8000;
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                const sub = bytes.subarray(i, i + chunkSize);
+                binary += String.fromCharCode.apply(null, sub);
+            }
+            return btoa(binary);
+        }
+
+        // Setup global variables for EmulatorJS
+        window.EJS_player = '#emulator-game-container'
+        window.EJS_gameUrl = gameUrl
+        window.EJS_core = core
+        //decode game name from URI
+        window.EJS_gameName = decodeURIComponent(`${gameUrl.split('/').pop().split('?')[0]}`)
+        window.EJS_startOnLoaded = true;
+
+        //fullscreen mode
+        window.EJS_fullscreenOnLoaded = true;
+        window.EJS_alignStartButton = 'center';
+
+        window.EJS_pathtodata = `https://cdn.emulatorjs.org/${emuVersion}/data/`
+
+        // EJS_onSaveState callback
+        window.EJS_onSaveState = function (e) {
+            const gameName = typeof window.EJS_gameName !== 'undefined' ? window.EJS_gameName : window.EJS_gameUrl;
+            console.log('[EmulatorJS] EJS_onSaveState triggered', { gameName, payload: e, arrayLength: e?.length });
+            let screenshotU8 = null;
+            let stateU8 = null;
+
+            if (Array.isArray(e) && e.length >= 2) {
+                screenshotU8 = e[0];
+                stateU8 = e[1];
+            } else if (e && typeof e === 'object') {
+                screenshotU8 = e.screenshot || e[0] || null;
+                stateU8 = e.state || e.save || e[1] || null;
+            }
+
+            if (!stateU8) {
+                console.warn('[EmulatorJS] EJS_onSaveState: Invalid data received (no state)', { e });
+                return;
+            }
+
+
+            HFS.customRestCall('saveState', {
+                game: gameName,
+                slot: 1,
+                stateBase64: b64(stateU8),
+                screenshotBase64: screenshotU8 ? b64(screenshotU8) : undefined
+            });
+        };
+
+        // EJS_onSaveUpdate callback
+        window.EJS_onSaveUpdate = function (e) {
+            const gameName = typeof window.EJS_gameName !== 'undefined' ? window.EJS_gameName : window.EJS_gameUrl;
+            console.log('[EmulatorJS] EJS_onSaveUpdate triggered', {
+                gameName,
+                hash: e?.hash,
+                saveBytes: e?.save?.byteLength || 0,
+                screenshotBytes: e?.screenshot?.byteLength || 0,
+                format: e?.format
+            });
+            if (!e || !e.save) {
+                console.warn('[EmulatorJS] EJS_onSaveUpdate: Invalid data received');
+                return;
+            }
+            const sramU8 = e.save;
+            HFS.customRestCall('saveSram', { game: gameName, dataBase64: b64(sramU8) });
+        };
+
+        // EJS_onLoadState callback
+        window.EJS_onLoadState = async function (e) {
+            const gameName = typeof window.EJS_gameName !== 'undefined' ? window.EJS_gameName : window.EJS_gameUrl;
+            console.log('[EmulatorJS] EJS_onLoadState triggered', { gameName });
+            try {
+                const res = await HFS.customRestCall('loadState', { game: gameName, slot: 1 });
+
+                if (!res || !res.success) {
+                    console.warn('[EmulatorJS] EJS_onLoadState: No state found on server', { res });
+                    return null;
+                }
+
+                if (!res.stateBase64) {
+                    console.warn('[EmulatorJS] EJS_onLoadState: No state data in response', { res });
+                    return null;
+                }
+
+                const binaryString = atob(res.stateBase64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                const stateBlob = new Blob([bytes], { type: 'application/octet-stream' });
+
+                console.log('[EmulatorJS] EJS_onLoadState: State loaded successfully', {
+                    gameName,
+                    stateBytes: bytes.byteLength
+                });
+
+                // Return the Blob directly so EmulatorJS can load it
+                return stateBlob;
+
+            } catch (err) {
+                console.error('[EmulatorJS] EJS_onLoadState: Error loading state', err);
+                return null;
+            }
+        };
+
+        console.log('[EmulatorJS] Global variables set:')
+
+        Object.entries(window).forEach(([key, value]) => {
+            if (key.startsWith('EJS_')) {
+                console.log(`[EmulatorJS] - ${key}:`, value);
+            }
+        });
+        console.log('[EmulatorJS] Global variables logged. Ready to load emulator.');
+
     }
 
     // Function to display game information modal
@@ -925,17 +1124,6 @@
         }, 100)
     }
 
-    HFS.onEvent('fileShow', ({ entry }) => {
-        console.log('[EmulatorJS] fileOpen event for entry:', entry.name)
-        const filename = entry.name
-        const ext = (entry && entry.ext) ? entry.ext.toLowerCase() : (filename.includes('.') ? filename.split('.').pop().toLowerCase() : '')
-        const allSystems = getAllSystemsFromFile(ext || filename)
-        if (!allSystems || allSystems.length === 0 || entry.isFolder) {
-            return
-        }
-
-        console.log('[EmulatorJS] Detected systems for', filename, ':', allSystems)
-    })
 
     HFS.onEvent('fileMenu', ({ entry, menu, props }) => {
 
