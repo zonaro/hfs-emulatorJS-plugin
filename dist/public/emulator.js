@@ -1,10 +1,5 @@
 'use strict';
-{
-
-    /// include SYSTEM_MAPS
-
-
-
+{ 
     // EmulatorJS Plugin for HFS
     console.log('[EmulatorJS] frontend script loaded')
 
