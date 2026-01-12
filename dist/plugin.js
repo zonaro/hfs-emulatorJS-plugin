@@ -1,32 +1,61 @@
+"use strict";
+
+
 // EmulatorJS Plugin for HFS
 // Allows opening ROMs in JavaScript emulators directly in the browser
 
 exports.description = "Plugin that integrates EmulatorJS to emulate classic console games directly in the browser"
-exports.version = 2
-exports.apiRequired = 8.23
+exports.version = 1.1;
+exports.apiRequired = 12.9;
 
-const fs = require('fs')
-const path = require('path')
-const https = require('https')
-const http = require('http')
+
+// IGDB API Configuration
+let igdbToken = null
+let tokenExpiry = null
 
 exports.init = function (api) {
 
-    const publicDir = path.join(__dirname, 'public')
-    const coversDir = path.join(__dirname, 'covers')
-    const gameInfoDir = path.join(__dirname, 'gameinfo')
-    const folderIconsDir = path.join(__dirname, 'folder-icons')
+    const fs = require('fs');
+    const https = require('https');
+    const http = require('http');
+    const path = require('path');
 
-    // Ensure directories exist
-    if (!fs.existsSync(coversDir)) {
-        fs.mkdirSync(coversDir, { recursive: true })
+    const configuredBase = api.getConfig('storageBasePath') || api.storageDir;
+    const publicDir = path.join(__dirname, 'public')
+    const coversDir = path.join(configuredBase, 'covers')
+    const gameInfoDir = path.join(configuredBase, 'gameinfo')
+    const usersRoot = path.join(configuredBase, "users");
+    const iconsDir = path.join(publicDir, 'console-icons')
+
+
+
+    ensureDir(fs, path, configuredBase);
+    ensureDir(fs, path, gameInfoDir);
+    ensureDir(fs, path, usersRoot);
+    ensureDir(fs, path, coversDir);
+    ensureDir(fs, path, iconsDir);
+
+    // Checks existence of public assets
+    if (!fs.existsSync(path.join(publicDir, 'emulator.js')) || !fs.existsSync(path.join(publicDir, 'emulator.css'))) {
+        api.setError('EmulatorJS plugin: missing public files (emulator.js or emulator.css). Check the public/ folder.')
     }
-    if (!fs.existsSync(gameInfoDir)) {
-        fs.mkdirSync(gameInfoDir, { recursive: true })
+
+    // Utility: safe base64 decode
+    function fromBase64(b64) {
+        return Buffer.from(b64, "base64");
     }
-    if (!fs.existsSync(folderIconsDir)) {
-        fs.mkdirSync(folderIconsDir, { recursive: true })
+
+    // Utility: ensure directory exists recursively
+    function ensureDir(fs, path, dir) {
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     }
+
+    // Utility: normalize a game name into a filesystem-friendly base
+    function gameBase(api, game) {
+        const base = game.replace(/\\/g, "/").split("/").pop();
+        return api.normalizeFilename(base.replace(/[^a-zA-Z0-9._-]/g, "_"));
+    }
+
 
     // Function to get game info from cache
     function getGameInfoFromCache(romName) {
@@ -55,14 +84,61 @@ exports.init = function (api) {
         }
     }
 
-    // Checks existence of public assets
-    if (!fs.existsSync(path.join(publicDir, 'emulator.js')) || !fs.existsSync(path.join(publicDir, 'emulator.css'))) {
-        api.setError('EmulatorJS plugin: missing public files (emulator.js or emulator.css). Check the public/ folder.')
+    function getUsername(ctx) {
+        return api.getCurrentUsername(ctx) || "";
     }
 
-    // IGDB API Configuration
-    let igdbToken = null
-    let tokenExpiry = null
+    function userRoot(username) {
+        return path.join(usersRoot, username);
+    }
+
+    function userDirs(username) {
+        const root = userRoot(username);
+        const savesDir = path.join(root, "saves"); // .state files
+        const screenshotsDir = path.join(root, "screenshots"); // .png previews
+        const sramDir = path.join(root, "sram"); // .sram files
+        ensureDir(fs, path, savesDir);
+        ensureDir(fs, path, screenshotsDir);
+        ensureDir(fs, path, sramDir);
+        return { root, savesDir, screenshotsDir, sramDir };
+    }
+
+    function listSaveStatesFor(username, game) {
+        const { savesDir, screenshotsDir } = userDirs(username);
+        const base = path.parse(gameBase(api, game)).name;
+        const glob = api.require("glob");
+        const files = glob.sync(path.join(savesDir, `${base}_*.state`));
+        return files.map(f => {
+            const m = f.match(/_(\d+)\.state$/);
+            const slot = m ? parseInt(m[1]) : undefined;
+            const ts = fs.existsSync(f) ? fs.statSync(f).mtimeMs : 0;
+            const screenshot = path.join(screenshotsDir, `${base}_${slot}.png`);
+            return {
+                slot,
+                timestamp: ts,
+                hasScreenshot: fs.existsSync(screenshot)
+            };
+        }).sort((a, b) => (b?.timestamp || 0) - (a?.timestamp || 0));
+    }
+
+    function stateFilePath(username, game, slot) {
+        const { savesDir } = userDirs(username);
+        const base = path.parse(gameBase(api, game)).name;
+        return path.join(savesDir, `${base}_${slot}.state`);
+    }
+
+    function screenshotFilePath(username, game, slot) {
+        const { screenshotsDir } = userDirs(username);
+        const base = path.parse(gameBase(api, game)).name;
+        return path.join(screenshotsDir, `${base}_${slot}.png`);
+    }
+
+    function sramFilePath(username, game) {
+        const { sramDir } = userDirs(username);
+        const base = path.parse(gameBase(api, game)).name;
+        return path.join(sramDir, `${base}.sram`);
+    }
+
 
     // Function to get IGDB authentication token
     async function getIGDBToken() {
@@ -125,6 +201,8 @@ exports.init = function (api) {
         const token = await getIGDBToken()
         const IGDB_CLIENT_ID = api.getConfig('igdbClientId')
 
+        api.log(`[IGDB] Preparing to search covers for game: "${gameName}"`)
+
         return new Promise((resolve, reject) => {
             const postData = `search "${gameName}"; fields name,cover.image_id; limit 20;`
             api.log(`[IGDB] Searching covers for: "${gameName}"`)
@@ -184,6 +262,8 @@ exports.init = function (api) {
     async function searchGameInfo(gameName) {
         const token = await getIGDBToken()
         const IGDB_CLIENT_ID = api.getConfig('igdbClientId')
+
+        api.log(`[IGDB] Preparing to search game info for: "${gameName}"`)
 
         return new Promise((resolve, reject) => {
             // Request comprehensive game information
@@ -269,21 +349,44 @@ exports.init = function (api) {
 
     // Function to download image
     async function downloadImage(url, destPath) {
+        // check if URL is a data URI 
         return new Promise((resolve, reject) => {
-            const proto = url.startsWith('https') ? https : http
-            const file = fs.createWriteStream(destPath)
 
-            proto.get(url, (res) => {
-                res.pipe(file)
-                file.on('finish', () => {
-                    file.close()
-                    resolve()
+            if (url.startsWith('data:image/')) {
+                // Data URI
+                const matches = url.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
+                if (!matches || matches.length !== 3) {
+                    return reject(new Error('Invalid data URI format'))
+                } else {
+                    const data = matches[2]
+                    const buffer = Buffer.from(data, 'base64')
+                    fs.writeFile(destPath, buffer, (err) => {
+                        if (err) {
+                            reject(err)
+                        } else {
+                            resolve()
+                        }
+                    })
+                }
+            } else {
+
+                const proto = url.startsWith('https') ? https : http
+                const file = fs.createWriteStream(destPath)
+
+                proto.get(url, (res) => {
+                    res.pipe(file)
+                    file.on('finish', () => {
+                        file.close()
+                        resolve()
+                    })
+                }).on('error', (err) => {
+                    fs.unlink(destPath, () => { })
+                    reject(err)
                 })
-            }).on('error', (err) => {
-                fs.unlink(destPath, () => { })
-                reject(err)
-            })
+            }
         })
+
+
     }
 
     // Check URL content-type to verify if it's an image
@@ -305,55 +408,157 @@ exports.init = function (api) {
         })
     }
 
-    // Custom REST API to search and set covers
+    // Custom REST API
     const customRest = {
+
+        // === Save States and SRAM Management ===
+
+        /// List save states and SRAM info for a game
+        async list({ game }, ctx) {
+            const username = getUsername(ctx);
+            if (!username) ctx.throw(401, "Not authenticated");
+            const saves = listSaveStatesFor(username, game);
+            const sramPath = sramFilePath(username, game);
+            return {
+                saveStates: saves,
+                sramExists: fs.existsSync(sramPath),
+                sramBytes: fs.existsSync(sramPath) ? fs.statSync(sramPath).size : 0
+            };
+        },
+
+        /// Save a state
+        async saveState({ game, slot, stateBase64, screenshotBase64 }, ctx) {
+            const username = getUsername(ctx);
+            if (!username) ctx.throw(401, "Not authenticated");
+            const maxSlots = api.getConfig("max_save_slots") ?? 10;
+            const n = Number(slot);
+            if (!Number.isInteger(n) || n < 1 || n > maxSlots)
+                ctx.throw(400, "Invalid slot");
+            const stateBuf = fromBase64(stateBase64 || "");
+            if (!stateBuf?.length) ctx.throw(400, "Empty state");
+            const statePath = stateFilePath(username, game, n);
+            const shotPath = screenshotFilePath(username, game, n);
+            fs.writeFileSync(statePath, stateBuf);
+            if (screenshotBase64) {
+                const png = fromBase64(screenshotBase64);
+                if (png?.length) fs.writeFileSync(shotPath, png);
+            }
+            api.log('[EmulatorJS] saveState', { user: username, game, slot: n, bytes: stateBuf.length });
+            return { ok: true };
+        },
+
+        /// Delete a state
+        async deleteState({ game, slot }, ctx) {
+            const username = getUsername(ctx);
+            if (!username) ctx.throw(401, "Not authenticated");
+            const n = Number(slot);
+            const statePath = stateFilePath(username, game, n);
+            const shotPath = screenshotFilePath(username, game, n);
+            const existed = fs.existsSync(statePath) || fs.existsSync(shotPath);
+            if (fs.existsSync(statePath)) fs.unlinkSync(statePath);
+            if (fs.existsSync(shotPath)) fs.unlinkSync(shotPath);
+            return { ok: true, existed };
+        },
+
+        /// Load a state
+        async loadState({ game, slot }, ctx) {
+            const username = getUsername(ctx);
+            if (!username) ctx.throw(401, "Not authenticated");
+            const n = Number(slot);
+            const statePath = stateFilePath(username, game, n);
+            const shotPath = screenshotFilePath(username, game, n);
+            if (!fs.existsSync(statePath)) {
+                return { success: false, error: 'State not found', status: 404 };
+            }
+            try {
+                const data = fs.readFileSync(statePath);
+                const result = {
+                    success: true,
+                    stateBase64: data.toString('base64')
+                };
+                if (fs.existsSync(shotPath)) {
+                    result.screenshotBase64 = fs.readFileSync(shotPath).toString('base64');
+                }
+                api.log('[EmulatorJS] loadState', { user: username, game, slot: n, bytes: data.length });
+                return result;
+            } catch (err) {
+                api.log('[EmulatorJS] loadState error: ' + err.message);
+                return { success: false, error: err.message, status: 500 };
+            }
+        },
+
+        /// Save SRAM
+        async saveSram({ game, dataBase64 }, ctx) {
+            const username = getUsername(ctx);
+            if (!username) ctx.throw(401, "Not authenticated");
+            const buf = fromBase64(dataBase64 || "");
+            if (!buf?.length) ctx.throw(400, "Empty SRAM");
+            const f = sramFilePath(username, game);
+            fs.writeFileSync(f, buf);
+            api.log('[EmulatorJS] saveSram', { user: username, game, bytes: buf.length });
+            return { ok: true };
+        },
+
+        /// Get SRAM
+        async getSram({ game }, ctx) {
+            const username = getUsername(ctx);
+            if (!username) ctx.throw(401, "Not authenticated");
+            const f = sramFilePath(username, game);
+            if (!fs.existsSync(f)) return { success: false, error: 'No SRAM', status: 404 };
+            try {
+                const data = fs.readFileSync(f);
+                return { success: true, dataBase64: data.toString('base64'), bytes: data.length };
+            } catch (err) {
+                api.log('[EmulatorJS] getSram error: ' + err.message);
+                return { success: false, error: err.message, status: 500 };
+            }
+        },
+
+
+        /// Search for game covers
         async searchCovers({ romName }) {
             try {
-                // Check if romName is actually a direct URL to an image
-                if (romName && (romName.startsWith('http://') || romName.startsWith('https://'))) {
-                    api.log(`[searchCovers] Detected direct URL: ${romName}`)
+                api.log(`[searchCovers] Proceeding with IGDB search for: "${romName}"`)
 
-                    // Validate that the URL points to an image
-                    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
-                    const hasImageExtension = imageExtensions.some(ext => {
-                        const urlLower = romName.toLowerCase()
-                        return urlLower.includes(ext)
-                    })
+                romName = romName || ''
+                romName = romName.trim()
+                // check for data URI or image extension
+                if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].some(ext => romName.toLowerCase().endsWith(ext)) || (romName.toLowerCase().startsWith('data:image/') && romName.length > 11)) {
+                    // Return the URL as a direct result
+                    return {
+                        success: true,
+                        results: [{
+                            id: 'direct-url',
+                            name: 'Direct URL Image',
+                            coverUrl: romName,
+                            isDirect: true
+                        }]
+                    }
+                }
 
-                    if (hasImageExtension) {
-                        // Return the URL as a direct result
-                        return {
-                            success: true,
-                            results: [{
-                                id: 'direct-url',
-                                name: 'Direct URL Image',
-                                coverUrl: romName,
-                                isDirect: true
-                            }]
-                        }
-                    } else {
-                        // Try to verify if it's an image by checking content-type
-                        try {
-                            const contentType = await checkUrlContentType(romName)
-                            if (contentType && contentType.startsWith('image/')) {
-                                api.log(`[searchCovers] URL content-type is image: ${contentType}`)
-                                return {
-                                    success: true,
-                                    results: [{
-                                        id: 'direct-url',
-                                        name: 'Direct URL Image',
-                                        coverUrl: romName,
-                                        isDirect: true
-                                    }]
-                                }
+                else {
+                    // Try to verify if it's an image by checking content-type
+                    try {
+                        const contentType = await checkUrlContentType(romName)
+                        if (contentType && contentType.startsWith('image/')) {
+                            api.log(`[searchCovers] URL content-type is image: ${contentType}`)
+                            return {
+                                success: true,
+                                results: [{
+                                    id: 'direct-url',
+                                    name: 'Direct URL Image',
+                                    coverUrl: romName,
+                                    isDirect: true
+                                }]
                             }
-                        } catch (err) {
-                            api.log(`[searchCovers] Could not verify URL: ${err.message}`)
                         }
+                    } catch (err) {
+                        api.log(`[searchCovers] Could not verify URL: ${err.message}`)
                     }
                 }
 
                 // If not a URL, proceed with normal IGDB search
+                api.log(`[searchCovers] Searching IGDB for covers matching: "${romName}"`)
                 const results = await searchGameCovers(romName)
                 return { success: true, results }
             } catch (err) {
@@ -361,7 +566,7 @@ exports.init = function (api) {
                 return { success: false, error: err.message }
             }
         },
-
+        /// Search for complete game info
         async searchGameInfo({ gameName }) {
             try {
                 const results = await searchGameInfo(gameName)
@@ -372,6 +577,7 @@ exports.init = function (api) {
             }
         },
 
+        /// Save game info to cache
         async saveGameInfo({ romName, gameInfo }) {
             try {
                 const saved = saveGameInfoToCache(romName, gameInfo)
@@ -382,6 +588,7 @@ exports.init = function (api) {
             }
         },
 
+        /// Get game info from cache
         async getGameInfo({ romName }) {
             try {
                 const gameInfo = getGameInfoFromCache(romName)
@@ -395,52 +602,32 @@ exports.init = function (api) {
             }
         },
 
-        async setCover({ romName, gameId, coverUrl, romPath }) {
+        /// Set cover image for a ROM
+        async setCover({ romName, coverUrl }) {
             try {
                 // Check if coverUrl is a valid URL
                 let finalCoverUrl = coverUrl
-
-                // If coverUrl looks like a direct URL (starts with http:// or https://), validate it's an image
-                if (coverUrl && (coverUrl.startsWith('http://') || coverUrl.startsWith('https://'))) {
-                    api.log(`[setCover] Detected direct URL: ${coverUrl}`)
-
-                    // Validate that the URL points to an image by checking the extension or content-type
-                    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
-                    const hasImageExtension = imageExtensions.some(ext => {
-                        const urlLower = coverUrl.toLowerCase()
-                        return urlLower.includes(ext)
-                    })
-
-                    if (hasImageExtension) {
-                        api.log(`[setCover] Valid image URL detected, will download directly`)
+                let hasExtension = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+                    .some(ext => coverUrl.toLowerCase().endsWith(ext))
+                let isDataUri = coverUrl.toLowerCase().startsWith('data:image/') && coverUrl.length > 11
+                if (hasExtension || isDataUri) {
+                    api.log(`[setCover] Valid image URL detected, will download directly`)
+                    finalCoverUrl = coverUrl
+                } else {
+                    const contentType = await checkUrlContentType(coverUrl)
+                    if (contentType && contentType.startsWith('image/')) {
+                        api.log(`[setCover] URL content-type is image: ${contentType}`)
                         finalCoverUrl = coverUrl
                     } else {
-                        // Try to verify if it's an image by making a HEAD request
-                        try {
-                            const contentType = await checkUrlContentType(coverUrl)
-                            if (contentType && contentType.startsWith('image/')) {
-                                api.log(`[setCover] URL content-type is image: ${contentType}`)
-                                finalCoverUrl = coverUrl
-                            } else {
-                                return { success: false, error: `URL does not point to a valid image. Content-Type: ${contentType}` }
-                            }
-                        } catch (err) {
-                            api.log(`[setCover] Could not verify URL content-type: ${err.message}`)
-                            // Proceed anyway if we can't check
-                            finalCoverUrl = coverUrl
-                        }
+                        return { success: false, error: `URL does not point to a valid image. Content-Type: ${contentType}` }
                     }
                 }
 
-                // Use the full ROM name including extension
                 // Determine image extension from coverUrl
-                const coverExt = finalCoverUrl.includes('.png') ? '.png' : '.jpg'
-                const coverPath = path.join(coversDir, romName + coverExt)
+                const coverPath = path.join(coversDir, romName + '.png')
 
                 // Ensure covers directory exists
-                if (!fs.existsSync(coversDir)) {
-                    fs.mkdirSync(coversDir, { recursive: true })
-                }
+                ensureDir(fs, path, coversDir);
 
                 api.log(`[setCover] Saving cover for ROM: ${romName}`)
                 api.log(`[setCover] Target path: ${coverPath}`)
@@ -448,13 +635,45 @@ exports.init = function (api) {
                 await downloadImage(finalCoverUrl, coverPath)
 
                 return { success: true, message: 'Cover saved successfully', coverPath }
+
             } catch (err) {
-                api.log(`Error saving cover: ${err.message}`)
+                api.log(`Error processing cover URL: ${err.message}`)
+                return { success: false, error: err.message }
+            }
+
+        },
+        /// Remove cover image for a ROM
+        async removeCover({ romName }) {
+            try {
+                api.log(`[removeCover] Removing cover for ROM: ${romName}`)
+
+                // Check for cover files with different extensions
+                const coverExtensions = ['.jpg', '.jpeg', '.png']
+                let coverRemoved = false
+
+                for (const ext of coverExtensions) {
+                    const coverPath = path.join(coversDir, romName + ext)
+                    if (fs.existsSync(coverPath)) {
+                        api.log(`[removeCover] Found cover at: ${coverPath}`)
+                        fs.unlinkSync(coverPath)
+                        api.log(`[removeCover] Cover removed successfully`)
+                        coverRemoved = true
+                    }
+                }
+
+                if (coverRemoved) {
+                    return { success: true, message: 'Cover removed successfully' }
+                } else {
+                    return { success: false, error: 'No cover found to remove' }
+                }
+            } catch (err) {
+                api.log(`Error removing cover: ${err.message}`)
                 return { success: false, error: err.message }
             }
         },
 
-        async getCover({ rom, romPath }) {
+
+        async getCover({ rom }) {
             try {
                 if (!rom) {
                     return { success: false, error: 'Missing rom parameter', status: 400 }
@@ -467,6 +686,16 @@ exports.init = function (api) {
                 const coverPathPng = path.join(coversDir, rom + '.png')
                 const coverPathJpeg = path.join(coversDir, rom + '.jpeg')
 
+                if (fs.existsSync(coverPathPng)) {
+                    api.log(`[getCover] Found cover in plugin covers: ${coverPathPng}`)
+                    const imageData = fs.readFileSync(coverPathPng)
+                    return {
+                        success: true,
+                        data: imageData.toString('base64'),
+                        mimeType: 'image/png'
+                    }
+                }
+
                 if (fs.existsSync(coverPathJpg)) {
                     api.log(`[getCover] Found cover in plugin covers: ${coverPathJpg}`)
                     const imageData = fs.readFileSync(coverPathJpg)
@@ -477,15 +706,7 @@ exports.init = function (api) {
                     }
                 }
 
-                if (fs.existsSync(coverPathPng)) {
-                    api.log(`[getCover] Found cover in plugin covers: ${coverPathPng}`)
-                    const imageData = fs.readFileSync(coverPathPng)
-                    return {
-                        success: true,
-                        data: imageData.toString('base64'),
-                        mimeType: 'image/png'
-                    }
-                }
+
 
                 if (fs.existsSync(coverPathJpeg)) {
                     api.log(`[getCover] Found cover in plugin covers: ${coverPathJpeg}`)
@@ -517,7 +738,7 @@ exports.init = function (api) {
                 const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
 
                 // Save icon mapping
-                const mappingFile = path.join(folderIconsDir, 'icon-mappings.json')
+                const mappingFile = path.join(configuredBase, 'icon-mappings.json')
                 let mappings = {}
 
                 if (fs.existsSync(mappingFile)) {
@@ -551,7 +772,7 @@ exports.init = function (api) {
                 // Normalize folder path
                 const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
 
-                const mappingFile = path.join(folderIconsDir, 'icon-mappings.json')
+                const mappingFile = path.join(configuredBase, 'icon-mappings.json')
 
                 if (!fs.existsSync(mappingFile)) {
                     return { success: false, error: 'No icon mapping found' }
@@ -562,7 +783,11 @@ exports.init = function (api) {
 
                 if (mappings[normalizedPath]) {
                     api.log(`[getFolderIcon] Found icon: ${mappings[normalizedPath]}`)
-                    return { success: true, iconName: mappings[normalizedPath] }
+                    return {
+                        success: true,
+                        iconName: mappings[normalizedPath],
+                        dataUrl: `data:image/png;base64,${fs.readFileSync(path.join(iconsDir, mappings[normalizedPath])).toString('base64')}`
+                    }
                 }
 
                 return { success: false, error: 'No icon for this folder' }
@@ -575,8 +800,6 @@ exports.init = function (api) {
         async getAvailableIcons() {
             try {
                 api.log(`[getAvailableIcons] Listing available console icons`)
-
-                const iconsDir = path.join(publicDir, 'console-icons')
 
                 if (!fs.existsSync(iconsDir)) {
                     return { success: false, error: 'Icons directory not found' }
@@ -598,7 +821,8 @@ exports.init = function (api) {
 
                     return {
                         filename,
-                        displayName: filename.replace('.png', '').replace(/^(Nintendo|Sony|Sega|Atari|FBNeo) - /, ''),
+                        // Remove o prefixo curto (ex: 'NES - ') e então remove o fabricante (ex: 'Nintendo - ')
+                        displayName: filename.replace('.png', '').replace(/_/g, ' ').replace(/^[^-]+ - /, '').replace(/^(Nintendo|Sony|Sega|Atari|FBNeo|Microsoft|SNK|Bandai|Commodore|NEC|Panasonic) - /, ''),
                         dataUrl: imageData ? `data:image/png;base64,${imageData}` : null
                     }
                 })
@@ -611,40 +835,6 @@ exports.init = function (api) {
             }
         },
 
-        async getFolderIconImage({ iconName }) {
-            try {
-                if (!iconName) {
-                    return { success: false, error: 'Missing iconName parameter' }
-                }
-
-                api.log(`[getFolderIconImage] Getting icon image: ${iconName}`)
-
-                const iconsDir = path.join(publicDir, 'console-icons')
-                const iconPath = path.join(iconsDir, iconName)
-
-                // Validate path to prevent directory traversal
-                if (!iconPath.startsWith(iconsDir)) {
-                    return { success: false, error: 'Invalid icon name' }
-                }
-
-                if (!fs.existsSync(iconPath)) {
-                    api.log(`[getFolderIconImage] Icon not found: ${iconPath}`)
-                    return { success: false, error: 'Icon not found' }
-                }
-
-                const buffer = fs.readFileSync(iconPath)
-                const imageData = buffer.toString('base64')
-
-                api.log(`[getFolderIconImage] Returning icon image`)
-                return {
-                    success: true,
-                    dataUrl: `data:image/png;base64,${imageData}`
-                }
-            } catch (err) {
-                api.log(`[getFolderIconImage] Error: ${err.message}`)
-                return { success: false, error: err.message }
-            }
-        },
 
         async removeFolderIcon({ folderPath }) {
             try {
@@ -657,7 +847,7 @@ exports.init = function (api) {
                 // Normalize folder path
                 const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
 
-                const mappingFile = path.join(folderIconsDir, 'icon-mappings.json')
+                const mappingFile = path.join(configuredBase, 'icon-mappings.json')
 
                 if (!fs.existsSync(mappingFile)) {
                     return { success: false, error: 'No icon mapping found' }
@@ -696,10 +886,15 @@ exports.init = function (api) {
 
         // Plugin configuration
         config: {
-            enabled: {
-                type: 'boolean',
-                defaultValue: true,
-                label: 'Enable EmulatorJS',
+
+            storageBasePath: {
+                type: "real_path",
+                folders: true,
+                label: "Storage Base Path",
+                helperText: "Folder where the plugin will save SRAM, save states, covers, and gameinfo.",
+                frontend: false,
+                defaultValue: configuredBase,
+                defaultPath: configuredBase
             },
             emulatorsJsVersion: {
                 type: 'select',
@@ -716,6 +911,15 @@ exports.init = function (api) {
                 defaultValue: true,
                 label: 'Show button in file menu'
             },
+
+            max_save_slots: {
+                type: "number",
+                label: "Max save-state slots per game",
+                min: 1,
+                max: 100,
+                defaultValue: 10,
+                frontend: true
+            },
             igdbClientId: {
                 type: 'string',
                 label: 'IGDB Client ID',
@@ -726,7 +930,7 @@ exports.init = function (api) {
                 label: 'IGDB Client Secret',
                 helperText: 'Get from https://dev.twitch.tv/console/apps (keep this secret!)',
                 inputProps: { type: 'password' }
-            }
+            },
         },
 
         customRest

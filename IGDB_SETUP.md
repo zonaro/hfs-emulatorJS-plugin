@@ -125,7 +125,7 @@ This usually means:
 - The covers folder has permission issues
 
 **Solution**:
-1. Check if the covers are saved: Navigate to `hfs-emulatorJS-plugin/covers/` in your HFS plugin folder
+1. Check if the covers are saved: See the configured base folder in the plugin settings and check its `/covers/` subfolder (default: plugin storage folder).
 2. Make sure HFS has write permissions to the plugin folder
 3. Try downloading again
 4. Check the HFS server logs for detailed error messages
@@ -156,7 +156,7 @@ If you don't want to set up IGDB API, you can manually place cover images:
 
 1. Create a `.jpg` or `.png` file with the same name as your ROM
    - Example: `Super Mario.nes` → `Super Mario.nes.jpg`
-2. Place it the covers folder in `hfs-emulatorJS-plugin/covers/` on your HFS plugin folder
+2. Place it the covers folder in the configured base folder under `/covers/` on your HFS plugin folder (or set the base path in plugin settings).
 3. The plugin will automatically use it as the cover
 
 ## Need Help?
