@@ -7,7 +7,7 @@
 // Allows opening ROMs in JavaScript emulators directly in the browser
 
 exports.description = "Plugin that integrates EmulatorJS to emulate classic console games directly in the browser"
-exports.version = 1.2;
+exports.version = 1.3;
 exports.apiRequired = 12.9;
 
 
@@ -525,7 +525,7 @@ exports.init = function (api) {
                 api.log(`[setFolderIcon] Setting icon "${iconName}" for folder: ${folderPath}`)
 
                 // Normalize folder path (remove leading/trailing slashes)
-                const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
+                const normalizedPath = decodeURIComponent(folderPath.replace(/^\/+|\/+$/g, ''))
 
                 // Save icon mapping
 
@@ -653,16 +653,20 @@ exports.init = function (api) {
                 ctx.body = body
             }
             return async () => {
-                let fileName = '';
+                let fileName = ctx.path;
                 let isFile = null;
-                if (ctx.path.endsWith('/')) {
-                    fileName = ctx.path.trim();
-                    fileName = fileName.slice(0, -1).trim();
-                    isFile = false;
+
+
+                // check if ctx.path is a file or folder
+                if (fileName == null || fileName.length == 0) {
+                    fileName = null;
+                    isFile = null
                 } else {
-                    fileName = ctx.path.split('/').pop().trim();
-                    isFile = true;
+                    isFile = path.extname(fileName).length > 0;
                 }
+
+
+
 
                 if (isFile == null) {
                     api.log('Unable to determine if path is file or folder: ' + fileName);
@@ -716,7 +720,7 @@ exports.init = function (api) {
                         }, {});
 
                         Object.keys(mappings).forEach(savedMap => {
-                            api.log(`Mapping: "${savedMap}" => "${mappings[savedMap]}"`)
+                            savedMap = decodeURIComponent(savedMap);
                             // check if folderPath contains the savedMap
                             if (mappedIcon == null && folderPath.includes(savedMap)) {
                                 mappedIcon = mappings[savedMap];

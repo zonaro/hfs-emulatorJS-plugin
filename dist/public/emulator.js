@@ -1,5 +1,5 @@
 'use strict';
-{ 
+{
     // EmulatorJS Plugin for HFS
     console.log('[EmulatorJS] frontend script loaded')
 
@@ -946,7 +946,7 @@
 
                         const { dialogLib } = HFS
                         const entryPath = entry.uri || entry.url;
-                        const srcCover = entryPath + '?get=game_cover';
+                        const srcCover = entryPath + '?get=game_cover&t=' + Date.now();
                         // Create modal to show image
                         let dialog = dialogLib.newDialog({
                             title: 'Cover Preview',
@@ -1073,7 +1073,7 @@
             // Create a Play button for each compatible core for the detected systems
             allSystems.forEach((systemInfo, sysIndex) => {
                 // cores can be defined on the systemInfo (array of core ids); fallback to system id
-                const cores = (Array.isArray(systemInfo.core) && systemInfo.core.length) ? systemInfo.core : [systemInfo.system]
+                const cores = (Array.isArray(systemInfo.core) && systemInfo.core.length) ? systemInfo.core : []
 
                 // add a separator for this system group
                 menu.unshift({ id: `separator-emulatorjs-play-${sysIndex}`, type: 'separator' })
@@ -1217,10 +1217,11 @@
             }
 
             // Detectar consoles na pasta
-            const detectedConsoles = await detectFolderConsoles(folderEntry.uri || folderEntry.url)
+            const detectedConsoles = await detectFolderConsoles(folderEntry.uri || folderEntry.url) || []
+            detectedConsoles.sort()
             let initialSearchValue = ''
 
-            initialSearchValue = detectedConsoles.join("/")
+            initialSearchValue = detectedConsoles.join("/") + '/' + folderEntry.name
 
 
             const icons = result.icons
@@ -1469,7 +1470,7 @@
 
         console.log('[EmulatorJS] entryIcon hook called for', entry.name)
         const entryPath = entry.uri || entry.url;
-        const srcCover = entryPath + '?get=game_cover';
+        const srcCover = entryPath + '?get=game_cover&t=' + Date.now();
         console.log('[EmulatorJS] entry path:', entryPath)
 
         if (entry.isFolder || (entry.isFolder == false && compatibleExtensions.includes(entry.ext))) {

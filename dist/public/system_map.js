@@ -108,6 +108,9 @@ const SYSTEM_MAP = {
         { system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }
     ],
 
+    'ecm': [
+        { system: 'psx', name: 'PlayStation', core: [ /* ecm isint really compatible, but is playstation*/], icon: 'PSX_-_Sony_-_PlayStation.png' }
+    ],
     // Atari 5200 - Core: a5200
     'a52': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
     'car': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
