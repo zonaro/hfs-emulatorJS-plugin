@@ -7,6 +7,35 @@
 const SYSTEM_MAP = {
     // ===== NINTENDO SYSTEMS =====    
 
+    '3ds': [{
+        system: '3ds', name: 'Nintendo 3DS', core: [
+            /* Emulator JS doesent have citra core, maitaining just for iconology*/
+        ], icon: '3DS_-_Nintendo_-_Nintendo_3DS.png'
+    }],
+
+    'cia': [{
+        system: '3ds', name: 'Nintendo 3DS', core: [
+            /* Emulator JS doesent have citra core, maitaining just for iconology*/
+        ], icon: '3DS_-_Nintendo_-_Nintendo_3DS.png'
+    }],
+
+    'rvz': [{
+        system: 'gamecube', name: 'Nintendo GameCube', core: [
+            /* Emulator JS doesent have a dolphin core, maitaining just for iconology*/
+        ], icon: 'GC_-_Nintendo_-_GameCube.png'
+    }],
+
+    'gcz': [{
+        system: 'gamecube', name: 'Nintendo GameCube', core: [
+            /* Emulator JS doesent have a dolphin core, maitaining just for iconology*/
+        ], icon: 'GC_-_Nintendo_-_GameCube.png'
+    }],
+
+    'gcm': [{
+        system: 'gamecube', name: 'Nintendo GameCube', core: [
+            /* Emulator JS doesent have a dolphin core, maitaining just for iconology*/
+        ], icon: 'GC_-_Nintendo_-_GameCube.png'
+    }],
 
     // NES/Famicom - Cores: fceumm (default), nestopia
     'nes': [{ system: 'nes', name: 'NES/Famicom', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
@@ -47,25 +76,26 @@ const SYSTEM_MAP = {
 
     // ===== SEGA SYSTEMS =====
 
-    // Sega Mega Drive/Genesis - Cores: genesis_plus_gx (default), genesis_plus_gx_wide, picodrive
-    'md': [{ system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-    'smd': [{ system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-    'gen': [{ system: 'segaMD', name: 'Sega Genesis', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-    'sg': [{ system: 'segaMD', name: 'Sega Genesis', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
+    // Sega Mega Drive/Genesis - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
+    'md': [{ system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
+    'smd': [{ system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
+    'gen': [{ system: 'segaMD', name: 'Sega Genesis', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
+    'sg': [{ system: 'segaMD', name: 'Sega Genesis', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
 
-    // Sega Master System - Cores: smsplus (default), genesis_plus_gx, picodrive
-    'sms': [{ system: 'segaMS', name: 'Sega Master System', core: ['smsplus', 'genesis_plus_gx', 'picodrive'], icon: 'MS_-_Sega_-_Master_System.png' }],
+    // Sega Master System - Cores: smsplus (default), genesis_plus_gx
+    'sms': [{ system: 'segaMS', name: 'Sega Master System', core: ['smsplus', 'genesis_plus_gx'], icon: 'MS_-_Sega_-_Master_System.png' }],
 
     // Sega Game Gear - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
     'gg': [{ system: 'segaGG', name: 'Sega Game Gear', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'GG_-_Sega_-_Game_Gear.png' }],
 
     // Sega CD - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
     'cue': [
-        { system: 'segaCD', name: 'Sega CD', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' },
+        { system: 'segaCD', name: 'Sega CD', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'SEGACD_-_Sega_-_Sega_CD.png' },
         { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
     ],
+
     'chd': [
-        { system: 'segaCD', name: 'Sega CD', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' },
+        { system: 'segaCD', name: 'Sega CD', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'SEGACD_-_Sega_-_Sega_CD.png' },
         { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
     ],
 
@@ -85,7 +115,12 @@ const SYSTEM_MAP = {
     ],
     'iso': [
         { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' },
-        { system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }
+        { system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' },
+        {
+            system: 'gamecube', name: 'Nintendo GameCube', core: [
+                /* Emulator JS doesent have a dolphin core, maitaining just for iconology*/
+            ], icon: 'GC_-_Nintendo_-_GameCube.png'
+        }
     ],
     'img': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
     'toc': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
@@ -112,11 +147,11 @@ const SYSTEM_MAP = {
         { system: 'psx', name: 'PlayStation', core: [ /* ecm isint really compatible, but is playstation*/], icon: 'PSX_-_Sony_-_PlayStation.png' }
     ],
     // Atari 5200 - Core: a5200
-    'a52': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
-    'car': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
+    'a52': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A5200_-_Atari_-_Atari_5200.png' }],
+    'car': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A5200_-_Atari_-_Atari_5200.png' }],
 
     // Atari 7800 - Core: prosystem
-    'a78': [{ system: 'atari7800', name: 'Atari 7800', core: ['prosystem'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
+    'a78': [{ system: 'atari7800', name: 'Atari 7800', core: ['prosystem'], icon: 'A7800_-_Atari_-_Atari_7800.png' }],
 
     // Atari Lynx - Core: handy
     'lnx': [{ system: 'lynx', name: 'Atari Lynx', core: ['handy'], icon: 'LYNX_-_Atari_-_Lynx.png' }],
@@ -145,7 +180,7 @@ const SYSTEM_MAP = {
     't64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
     'tap': [
         { system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' },
-        { system: 'vice_xvic', name: 'Commodore VIC-20', core: ['vice_xvic'], icon: 'VICE64_-_Commodore_-_C64.png' }
+        { system: 'vice_xvic', name: 'Commodore VIC-20', core: ['vice_xvic'], icon: 'VIC20_-_Commodore_-_VIC-20.png' }
     ],
     'prg': [
         { system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' },
@@ -155,7 +190,7 @@ const SYSTEM_MAP = {
     'crt': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
 
     // Commodore 128 - Core: vice_x128
-    'd81': [{ system: 'vice_x128', name: 'Commodore 128' }],
+    'd81': [{ system: 'vice_x128', name: 'Commodore 128', core: ['vice_x128'], icon: 'VICE128_-_Commodore_-_C128.png' }],
 
 
 
@@ -201,7 +236,7 @@ const SYSTEM_MAP = {
 
     // WonderSwan - Core: mednafen_wswan
     'ws': [{ system: 'ws', name: 'WonderSwan', core: ['mednafen_wswan'], icon: 'WS_-_Bandai_-_WonderSwan.png' }],
-    'wsc': [{ system: 'ws', name: 'WonderSwan Color', core: ['mednafen_wswan'], icon: 'WS_-_Bandai_-_WonderSwan.png' }],
+    'wsc': [{ system: 'ws', name: 'WonderSwan Color', core: ['mednafen_wswan'], icon: 'WSC_-_Bandai_-_WonderSwan_Color.png' }],
     'pc2': [{ system: 'ws', name: 'WonderSwan', core: ['mednafen_wswan'], icon: 'WS_-_Bandai_-_WonderSwan.png' }],
 
     // DOSBOX - Core: dosbox_pure (requires special setup)
@@ -213,6 +248,271 @@ const SYSTEM_MAP = {
     'bat': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
     'conf': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
     'dosz': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
+
+    // ===== ADDITIONAL SYSTEMS (No EmulatorJS core support - iconology only) =====
+
+    // Sony PlayStation 2 - No core available
+    'ps2': [{
+        system: 'ps2', name: 'PlayStation 2', core: [
+            /* EmulatorJS doesn't have PS2 core, maintaining just for iconology */
+        ], icon: 'PS2_-_Sony_-_PlayStation_2.png'
+    }],
+
+    // Sony PlayStation 3 - No core available
+    'ps3': [{
+        system: 'ps3', name: 'PlayStation 3', core: [
+            /* EmulatorJS doesn't have PS3 core, maintaining just for iconology */
+        ], icon: 'PS3_-_Sony_-_PlayStation_3.png'
+    }],
+
+    // Sony PlayStation 4 - No core available
+    'ps4': [{
+        system: 'ps4', name: 'PlayStation 4', core: [
+            /* EmulatorJS doesn't have PS4 core, maintaining just for iconology */
+        ], icon: 'PS4_-_Sony_-_PlayStation_4.png'
+    }],
+    'pkg': [{
+        system: 'ps4', name: 'PlayStation 4', core: [
+            /* EmulatorJS doesn't have PS4 core, maintaining just for iconology */
+        ], icon: 'PS4_-_Sony_-_PlayStation_4.png'
+    }],
+
+    // Sony PlayStation Vita - No core available
+    'psv': [{
+        system: 'psvita', name: 'PlayStation Vita', core: [
+            /* EmulatorJS doesn't have PS Vita core, maintaining just for iconology */
+        ], icon: 'PSVITA_-_Sony_-_PlayStation_Vita.png'
+    }],
+    'vita': [{
+        system: 'psvita', name: 'PlayStation Vita', core: [
+            /* EmulatorJS doesn't have PS Vita core, maintaining just for iconology */
+        ], icon: 'PSVITA_-_Sony_-_PlayStation_Vita.png'
+    }],
+
+    // Sega Dreamcast - No core available
+    'cdi': [{
+        system: 'dreamcast', name: 'Sega Dreamcast', core: [
+            /* EmulatorJS doesn't have Dreamcast core, maintaining just for iconology */
+        ], icon: 'DC_-_Sega_-_Dreamcast.png'
+    }],
+    'gdi': [{
+        system: 'dreamcast', name: 'Sega Dreamcast', core: [
+            /* EmulatorJS doesn't have Dreamcast core, maintaining just for iconology */
+        ], icon: 'DC_-_Sega_-_Dreamcast.png'
+    }],
+
+    // Sega SG-1000 - No core available
+    'sg1000': [{
+        system: 'sg1000', name: 'Sega SG-1000', core: [
+            /* EmulatorJS doesn't have SG-1000 core, maintaining just for iconology */
+        ], icon: 'SG1000_-_Sega_-_SG-1000.png'
+    }],
+
+    // Sega PICO - No core available  
+    'pico': [{
+        system: 'pico', name: 'Sega PICO', core: [
+            /* EmulatorJS doesn't have PICO core, maintaining just for iconology */
+        ], icon: 'PICO_-_Sega_-_PICO.png'
+    }],
+
+    // SNK Neo Geo - Core: fbneo (arcade)
+    'neo': [{ system: 'neogeo', name: 'Neo Geo', core: ['fbneo'], icon: 'NEOGEO_-_SNK_-_Neo_Geo.png' }],
+
+    // SNK Neo Geo CD - No core available
+    'neocd': [{
+        system: 'neogeocd', name: 'Neo Geo CD', core: [
+            /* EmulatorJS doesn't have Neo Geo CD core, maintaining just for iconology */
+        ], icon: 'NEOGEOCD_-_SNK_-_Neo_Geo_CD.png'
+    }],
+
+    // Microsoft Xbox - No core available
+    'xbe': [{
+        system: 'xbox', name: 'Microsoft Xbox', core: [
+            /* EmulatorJS doesn't have Xbox core, maintaining just for iconology */
+        ], icon: 'XBOX_-_Microsoft_-_Xbox.png'
+    }],
+    'xbox': [{
+        system: 'xbox', name: 'Microsoft Xbox', core: [
+            /* EmulatorJS doesn't have Xbox core, maintaining just for iconology */
+        ], icon: 'XBOX_-_Microsoft_-_Xbox.png'
+    }],
+
+    // Microsoft Xbox 360 - No core available
+    'x360': [{
+        system: 'xbox360', name: 'Microsoft Xbox 360', core: [
+            /* EmulatorJS doesn't have Xbox 360 core, maintaining just for iconology */
+        ], icon: 'XBOX360_-_Microsoft_-_Xbox_360.png'
+    }],
+
+    // Microsoft Xbox One - No core available
+    'xone': [{
+        system: 'xboxone', name: 'Microsoft Xbox One', core: [
+            /* EmulatorJS doesn't have Xbox One core, maintaining just for iconology */
+        ], icon: 'XBOXONE_-_Microsoft_-_Xbox_One.png'
+    }],
+
+    // Nintendo Wii - No core available
+    'wbfs': [{
+        system: 'wii', name: 'Nintendo Wii', core: [
+            /* EmulatorJS doesn't have Wii core, maintaining just for iconology */
+        ], icon: 'WII_-_Nintendo_-_Wii.png'
+    }],
+    'wia': [{
+        system: 'wii', name: 'Nintendo Wii', core: [
+            /* EmulatorJS doesn't have Wii core, maintaining just for iconology */
+        ], icon: 'WII_-_Nintendo_-_Wii.png'
+    }],
+
+    // Nintendo Wii U - No core available
+    'wud': [{
+        system: 'wiiu', name: 'Nintendo Wii U', core: [
+            /* EmulatorJS doesn't have Wii U core, maintaining just for iconology */
+        ], icon: 'WIIU_-_Nintendo_-_Wii_U.png'
+    }],
+    'wux': [{
+        system: 'wiiu', name: 'Nintendo Wii U', core: [
+            /* EmulatorJS doesn't have Wii U core, maintaining just for iconology */
+        ], icon: 'WIIU_-_Nintendo_-_Wii_U.png'
+    }],
+    'rpx': [{
+        system: 'wiiu', name: 'Nintendo Wii U', core: [
+            /* EmulatorJS doesn't have Wii U core, maintaining just for iconology */
+        ], icon: 'WIIU_-_Nintendo_-_Wii_U.png'
+    }],
+    'wua': [{
+        system: 'wiiu', name: 'Nintendo Wii U', core: [
+            /* EmulatorJS doesn't have Wii U core, maintaining just for iconology */
+        ], icon: 'WIIU_-_Nintendo_-_Wii_U.png'
+    }],
+
+    // Nintendo Switch - No core available
+    'nsp': [{
+        system: 'switch', name: 'Nintendo Switch', core: [
+            /* EmulatorJS doesn't have Switch core, maintaining just for iconology */
+        ], icon: 'SWITCH_-_Nintendo_-_Switch.png'
+    }],
+    'xci': [{
+        system: 'switch', name: 'Nintendo Switch', core: [
+            /* EmulatorJS doesn't have Switch core, maintaining just for iconology */
+        ], icon: 'SWITCH_-_Nintendo_-_Switch.png'
+    }],
+    'nsz': [{
+        system: 'switch', name: 'Nintendo Switch', core: [
+            /* EmulatorJS doesn't have Switch core, maintaining just for iconology */
+        ], icon: 'SWITCH_-_Nintendo_-_Switch.png'
+    }],
+    'xcz': [{
+        system: 'switch', name: 'Nintendo Switch', core: [
+            /* EmulatorJS doesn't have Switch core, maintaining just for iconology */
+        ], icon: 'SWITCH_-_Nintendo_-_Switch.png'
+    }],
+
+    // Microsoft MSX - No core available
+    'msx': [{
+        system: 'msx', name: 'MSX', core: [
+            /* EmulatorJS doesn't have MSX core, maintaining just for iconology */
+        ], icon: 'MSX_-_Microsoft_-_MSX.png'
+    }],
+    'mx1': [{
+        system: 'msx', name: 'MSX', core: [
+            /* EmulatorJS doesn't have MSX core, maintaining just for iconology */
+        ], icon: 'MSX_-_Microsoft_-_MSX.png'
+    }],
+
+    // Microsoft MSX2 - No core available
+    'msx2': [{
+        system: 'msx2', name: 'MSX2', core: [
+            /* EmulatorJS doesn't have MSX2 core, maintaining just for iconology */
+        ], icon: 'MSX2_-_Microsoft_-_MSX2.png'
+    }],
+    'mx2': [{
+        system: 'msx2', name: 'MSX2', core: [
+            /* EmulatorJS doesn't have MSX2 core, maintaining just for iconology */
+        ], icon: 'MSX2_-_Microsoft_-_MSX2.png'
+    }],
+
+    // Amstrad CPC - No core available
+    'cpc': [{
+        system: 'cpc', name: 'Amstrad CPC', core: [
+            /* EmulatorJS doesn't have CPC core, maintaining just for iconology */
+        ], icon: 'CPC_-_Amstrad_-_CPC.png'
+    }],
+    'dsk': [{
+        system: 'cpc', name: 'Amstrad CPC', core: [
+            /* EmulatorJS doesn't have CPC core, maintaining just for iconology */
+        ], icon: 'CPC_-_Amstrad_-_CPC.png'
+    }],
+
+    // Sharp X68000 - No core available
+    'x68': [{
+        system: 'x68000', name: 'Sharp X68000', core: [
+            /* EmulatorJS doesn't have X68000 core, maintaining just for iconology */
+        ], icon: 'X68000_-_Sharp_-_X68000.png'
+    }],
+    'dim': [{
+        system: 'x68000', name: 'Sharp X68000', core: [
+            /* EmulatorJS doesn't have X68000 core, maintaining just for iconology */
+        ], icon: 'X68000_-_Sharp_-_X68000.png'
+    }],
+
+    // NEC PC-98 - No core available
+    'pc98': [{
+        system: 'pc98', name: 'NEC PC-98', core: [
+            /* EmulatorJS doesn't have PC-98 core, maintaining just for iconology */
+        ], icon: 'PC98_-_NEC_-_PC-98.png'
+    }],
+    'd88': [{
+        system: 'pc98', name: 'NEC PC-98', core: [
+            /* EmulatorJS doesn't have PC-98 core, maintaining just for iconology */
+        ], icon: 'PC98_-_NEC_-_PC-98.png'
+    }],
+
+    // Sinclair ZX Spectrum - No core available
+    'zx': [{
+        system: 'zxspectrum', name: 'ZX Spectrum', core: [
+            /* EmulatorJS doesn't have ZX Spectrum core, maintaining just for iconology */
+        ], icon: 'ZX_-_Sinclair_-_ZX_Spectrum.png'
+    }],
+    'tzx': [{
+        system: 'zxspectrum', name: 'ZX Spectrum', core: [
+            /* EmulatorJS doesn't have ZX Spectrum core, maintaining just for iconology */
+        ], icon: 'ZX_-_Sinclair_-_ZX_Spectrum.png'
+    }],
+    'sna': [{
+        system: 'zxspectrum', name: 'ZX Spectrum', core: [
+            /* EmulatorJS doesn't have ZX Spectrum core, maintaining just for iconology */
+        ], icon: 'ZX_-_Sinclair_-_ZX_Spectrum.png'
+    }],
+
+    // GCE Vectrex - No core available
+    'vec': [{
+        system: 'vectrex', name: 'Vectrex', core: [
+            /* EmulatorJS doesn't have Vectrex core, maintaining just for iconology */
+        ], icon: 'VECTREX_-_GCE_-_Vectrex.png'
+    }],
+
+    // Nintendo Pokemon Mini - No core available
+    'min': [{
+        system: 'pokemini', name: 'Pokemon Mini', core: [
+            /* EmulatorJS doesn't have Pokemon Mini core, maintaining just for iconology */
+        ], icon: 'POKEMINI_-_Nintendo_-_Pokemon_Mini.png'
+    }],
+
+    // Capcom CPS1 - Core: fbneo (arcade)
+    'cps1': [{ system: 'cps1', name: 'Capcom CPS1', core: ['fbalpha2012_cps1', 'fbneo'], icon: 'CPS1_-_Capcom_-_CP_System_I.png' }],
+
+    // Capcom CPS2 - Core: fbneo (arcade)
+    'cps2': [{ system: 'cps2', name: 'Capcom CPS2', core: ['fbalpha2012_cps2', 'fbneo'], icon: 'CPS2_-_Capcom_-_CP_System_II.png' }],
+
+    // Capcom CPS3 - Core: fbneo (arcade)
+    'cps3': [{ system: 'cps3', name: 'Capcom CPS3', core: ['fbneo'], icon: 'CPS3_-_Capcom_-_CP_System_III.png' }],
+
+    // ScummVM - No specific core
+    'scummvm': [{
+        system: 'scummvm', name: 'ScummVM', core: [
+            /* EmulatorJS doesn't have ScummVM core, maintaining just for iconology */
+        ], icon: 'SCUMMVM_-_ScummVM.png'
+    }],
 }
 
 const compatibleExtensions = Object.keys(SYSTEM_MAP);

@@ -15,13 +15,15 @@ exports.apiRequired = 12.9;
 let igdbToken = null
 let tokenExpiry = null
 
+// an cache for system detection results {expires,icon}
+let systemDetectorCache = {};
+
 exports.init = function (api) {
 
     const fs = require('fs');
     const https = require('https');
     const http = require('http');
     const path = require('path');
-
 
     const publicDir = path.join(__dirname, 'public')
     const iconsDir = path.join(publicDir, 'console-icons')
@@ -32,6 +34,51 @@ exports.init = function (api) {
     const systemMapPath = path.join(publicDir, 'system_map.js');
     const mappingFile = path.join(configuredBase, 'icon-mappings.json')
 
+
+
+
+    function fetchText(url, timeoutMs = 5000, headers = {}, allowInsecure = true) {
+        return new Promise((resolve, reject) => {
+            try {
+                const urlObj = new URL(url)
+                const client = urlObj.protocol === 'https:' ? https : http
+
+                const options = {
+                    protocol: urlObj.protocol,
+                    hostname: urlObj.hostname,
+                    port: urlObj.port,
+                    path: urlObj.pathname + urlObj.search,
+                    headers
+                }
+
+                // allow self-signed certs for local/self requests when needed
+                if (allowInsecure && urlObj.protocol === 'https:') {
+                    options.rejectUnauthorized = false
+                }
+
+                const req = client.get(options, (res) => {
+                    let data = ''
+                    res.on('data', chunk => data += chunk)
+                    res.on('end', () => {
+                        const ok = res.statusCode && res.statusCode >= 200 && res.statusCode < 300
+                        if (ok) {
+                            resolve(data)
+                        } else {
+                            reject(new Error(`status ${res.statusCode}`))
+                        }
+                    })
+                })
+
+                req.setTimeout(timeoutMs, () => {
+                    req.destroy(new Error('timeout'))
+                })
+
+                req.on('error', reject)
+            } catch (err) {
+                reject(err)
+            }
+        })
+    }
 
     // get system_map.js and include it
 
@@ -54,7 +101,15 @@ exports.init = function (api) {
         api.setError('EmulatorJS plugin: missing public files (emulator.js or emulator.css). Check the public/ folder.')
     }
 
-
+    // Utility: fix game name for consistent caching
+    function fixGameName(romName) {
+        if (romName) {
+            romName = decodeURIComponent(romName);
+            romName = romName.toLowerCase();
+            romName = romName.replace(/^\/+|\/+$/g, '')
+        }
+        return romName;
+    }
 
     // Utility: ensure directory exists recursively
     function ensureDir(fs, path, dir) {
@@ -464,7 +519,7 @@ exports.init = function (api) {
                         return { success: false, error: `URL does not point to a valid image. Content-Type: ${contentType}` }
                     }
                 }
-
+                romName = fixGameName(romName);
                 // Determine image extension from coverUrl
                 const coverPath = path.join(coversDir, romName + '.png')
 
@@ -492,6 +547,7 @@ exports.init = function (api) {
                 // Check for cover files with different extensions
                 const coverExtensions = ['.jpg', '.jpeg', '.png']
                 let coverRemoved = false
+                romName = fixGameName(romName);
 
                 for (const ext of coverExtensions) {
                     const coverPath = path.join(coversDir, romName + ext)
@@ -525,7 +581,7 @@ exports.init = function (api) {
                 api.log(`[setFolderIcon] Setting icon "${iconName}" for folder: ${folderPath}`)
 
                 // Normalize folder path (remove leading/trailing slashes)
-                const normalizedPath = decodeURIComponent(folderPath.replace(/^\/+|\/+$/g, ''))
+                const normalizedPath = fixGameName(folderPath.replace(/^\/+|\/+$/g, ''))
 
                 // Save icon mapping
 
@@ -601,7 +657,8 @@ exports.init = function (api) {
                 api.log(`[removeFolderIcon] Removing icon for folder: ${folderPath}`)
 
                 // Normalize folder path
-                const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
+                const normalizedPath = fixGameName(folderPath.replace(/^\/+|\/+$/g, ''))
+
 
 
 
@@ -643,9 +700,9 @@ exports.init = function (api) {
 
             const allowedGets = ['game_cover', 'game_icon']
             const typeGet = ctx.query.get;
-            if (!allowedGets.includes(typeGet)) return;
+            if (!allowedGets.includes(typeGet)) return ctx.
 
-            ctx.state.considerAsGui = true
+                ctx.state.considerAsGui = true
             ctx.state.download_counter_ignore = true
             function error(code, body) {
                 ctx.status = code
@@ -653,126 +710,202 @@ exports.init = function (api) {
                 ctx.body = body
             }
             return async () => {
-                let fileName = ctx.path;
+
+                api.log("======== NEW REQUEST ========")
+                let filePath = ctx.path;
+
                 let isFile = null;
-
-
-                // check if ctx.path is a file or folder
-                if (fileName == null || fileName.length == 0) {
-                    fileName = null;
-                    isFile = null
-                } else {
-                    isFile = path.extname(fileName).length > 0;
-                }
-
-
-
-
-                if (isFile == null) {
-                    api.log('Unable to determine if path is file or folder: ' + fileName);
-                    return error(400, 'Bad Request: Unable to determine if path is file or folder');
-                }
-
-                fileName = decodeURIComponent(fileName);
-                /// first, get the platform icon if available
-
-                let isCover = typeGet === 'game_cover'
-
-                api.log(`Requested ${typeGet} for entry: ${fileName}`)
-
-
+                let extension = null;
+                let folderPath = null;
+                let fileName = null
                 let iconPath = null;
                 let mappings = null
                 let systemEntries = null;
                 let mappedIcon = null;
 
-                const extension = isFile == true ? path.extname(fileName).toLowerCase().slice(1).trim() : null;
-                const folderPath = isFile == true ? path.dirname(fileName) : isFile == false ? fileName : null;
+                // check if ctx.path is a file or folder
+                if (filePath == null || filePath.length == 0) {
+                    filePath = null;
+                    fileName = null;
+                    extension = null;
+                    isFile = null
+                    api.log('No fileName provided in request path.');
+                } else {
+                    extension = path.extname(filePath).toLowerCase().slice(1).trim();
+                    isFile = extension.length > 0;
+                    fileName = path.basename(filePath);
+                    if (isFile) {
+                        folderPath = path.dirname(filePath);
+                    } else {
+                        folderPath = filePath;
+                    }
+
+                    filePath = fixGameName(filePath);
+                    folderPath = fixGameName(folderPath);
+                    fileName = fixGameName(fileName);
+
+                    api.log(`Request path: ${filePath}, isFile: ${isFile}`);
+                    api.log(`Derived folderPath: ${folderPath}`);
+                    api.log(`Derived fileName: ${fileName}`);
+                    api.log(`Derived extension: ${extension}`);
+                }
+
+
+                if (isFile == null) {
+                    api.log('Unable to determine if path is file or folder: ' + filePath);
+                    return error(400, 'Bad Request: Unable to determine if path is file or folder');
+                }
+
+
+                let isCover = typeGet === 'game_cover'
+
+                api.log(`Requested ${typeGet} for entry: ${filePath}`)
 
                 if (isCover && extension && compatibleExtensions.includes(extension)) {
 
-                    const coverPathPng = path.join(coversDir, fileName + '.png')
-                    const coverPathJpg = path.join(coversDir, fileName + '.jpg')
-                    const coverPathJpeg = path.join(coversDir, fileName + '.jpeg')
+                    api.log(`Checking for custom cover for file: ${fileName}`)
 
-                    if (fs.existsSync(coverPathPng)) {
-                        api.log(`Serving cover from path: ${coverPathPng}`)
-                        iconPath = coverPathPng
-                    } else if (fs.existsSync(coverPathJpg)) {
-                        api.log(`Serving cover from path: ${coverPathJpg}`)
-                        iconPath = coverPathJpg
-                    } else if (fs.existsSync(coverPathJpeg)) {
-                        api.log(`Serving cover from path: ${coverPathJpeg}`)
-                        iconPath = coverPathJpeg
+                    const coverPathPng = path.join(coversDir, fileName + '.png')
+                    const coverPathPng2 = filePath + '.png';
+
+                    const coverPathJpg = path.join(coversDir, fileName + '.jpg')
+                    const coverPathJpg2 = filePath + '.jpg';
+
+                    const coverPathJpeg = path.join(coversDir, fileName + '.jpeg')
+                    const coverPathJpeg2 = filePath + '.jpeg';
+
+                    [coverPathPng2, coverPathJpg2, coverPathJpeg2, coverPathPng, coverPathJpg, coverPathJpeg].forEach(p => {
+                        if (fs.existsSync(p)) {
+                            api.log(`Serving cover from path: ${p}`)
+                            iconPath = p
+                            return;
+                        }
+                    });
+
+                    if (!iconPath) {
+                        api.log(`No custom cover found for file: ${filePath}`)
                     }
+
                 }
 
-                if (fs.existsSync(mappingFile)) {
-                    api.log(`Loading icon mappings from: ${mappingFile}`)
-                    const data = fs.readFileSync(mappingFile, 'utf8')
-                    mappings = JSON.parse(data)
-                    if (mappings) {
+                if (!iconPath) {
+                    if (fs.existsSync(mappingFile)) {
+                        api.log(`Loading icon mappings from file: ${mappingFile}`)
+                        const data = fs.readFileSync(mappingFile, 'utf8')
+                        mappings = JSON.parse(data)
+                        api.log(mappings)
+                        if (mappings) {
+                            let keysArray = Object.keys(mappings);
+                            api.log(`Loaded ${keysArray.length} icon mappings from file.`)
 
-                        /// order mappings from most specific to least specific
-                        mappings = Object.keys(mappings).sort((a, b) => b.length - a.length).reduce((obj, key) => {
-                            obj[key] = mappings[key];
-                            return obj;
-                        }, {});
+                            keysArray.forEach((sm, index) => {
+                                let folderMapped = fixGameName(sm.replace(/^\/+|\/+$/g, ''));
+                                api.log(`Mapping ${index}: Folder "${folderMapped}" => Icon "${mappings[sm]}"`)
+                                if (folderPath.includes(sm) || folderPath.includes(folderMapped)) {
+                                    api.log(`Folder path "${folderPath}" includes mapping folder "${folderMapped}"`)
+                                    if (mappedIcon == null || mappedIcon.length == 0 || mappedIcon.length < folderMapped.length) {
+                                        mappedIcon = mappings[sm];
+                                    }
 
-                        Object.keys(mappings).forEach(savedMap => {
-                            savedMap = decodeURIComponent(savedMap);
-                            // check if folderPath contains the savedMap
-                            if (mappedIcon == null && folderPath.includes(savedMap)) {
-                                mappedIcon = mappings[savedMap];
-                                api.log(`Using mapping for folder "${folderPath}": ${mappedIcon} (matched: "${savedMap}")`)
-                            }
-                        });
+                                }
+                            });
 
-                        if (mappedIcon) {
-                            api.log(`Found mapping for folder "${folderPath}": ${mappedIcon}`)
-                            mappedIcon = path.join(iconsDir, mappedIcon);
-                            if (fs.existsSync(mappedIcon)) {
-                                api.log(`Found mapped icon "${mappedIcon}" for folder: ${folderPath}`)
-                                iconPath = mappedIcon;
+                            if (mappedIcon) {
+                                api.log(`Found mapping for folder "${folderPath}": ${mappedIcon}`)
+                                mappedIcon = path.join(iconsDir, mappedIcon);
+                                if (fs.existsSync(mappedIcon)) {
+                                    api.log(`Found mapped icon "${mappedIcon}" for folder: ${folderPath}`)
+                                    iconPath = mappedIcon;
+                                } else {
+                                    api.log(`Mapped icon "${mappedIcon}" does not exist on disk.`)
+                                    mappedIcon = null;
+                                }
                             } else {
-                                api.log(`Mapped icon "${mappedIcon}" does not exist on disk.`)
-                                mappedIcon = null;
+                                api.log(`No mapping found for folder: "${folderPath}"`)
                             }
                         } else {
-                            api.log(`No mapping found for folder: "${folderPath}"`)
-                        }
-                    } else {
-                        api.log(`No valid mappings found in file.`)
+                            api.log(`No valid mappings found in file.`)
 
+                        }
                     }
                 }
 
                 if (!iconPath) {
+                    api.log(`No mapped icon found for folder: ${folderPath}. Proceeding to auto-detect system.`)
                     const detectedSystems = new Set();
                     // get folder files and check possible systems
-                    if (extension && compatibleExtensions.includes(extension)) {
+                    if (extension) {
+                        api.log(`Checking extension for system detection: .${extension}`);
                         systemEntries = SYSTEM_MAP[extension];
-                        if (systemEntries) {
+                        if (systemEntries && systemEntries.length > 0) {
                             for (const sys of systemEntries) {
                                 detectedSystems.add(sys.system);
                                 api.log(`Detected system "${sys.system}" from extension: .${extension}`);
                             }
+                        } else {
+                            api.log(`No system entries found for extension: .${extension}`);
                         }
                     }
 
-                    if (detectedSystems.size === 0 && fs.existsSync(folderPath)) {
-                        const files = fs.readdirSync(folderPath)
-                        api.log(`Scanning folder for system detection: ${folderPath}`);
-                        for (const file of files) {
-                            const ext = path.extname(file).toLowerCase().slice(1).trim();
-                            if (compatibleExtensions.includes(ext)) {
-                                var systems = SYSTEM_MAP[ext];
-                                for (const sys of systems) {
-                                    detectedSystems.add(sys.system);
-                                    api.log(`Detected system "${sys.system}" from file: ${file}`);
-                                }
+                    if (detectedSystems.size === 0) {
+
+                        if (systemDetectorCache[folderPath]) {
+                            if (!systemDetectorCache[folderPath].expires || systemDetectorCache[folderPath].expires < Date.now()) {
+                                api.log(`Cache expired for folder: ${folderPath}`);
+                                delete systemDetectorCache[folderPath];
                             }
                         }
+
+                        if (systemDetectorCache[folderPath] && systemDetectorCache[folderPath].systemEntries) {
+                            api.log(`Using cached system detection for folder: ${folderPath}`);
+                            systemDetectorCache[folderPath].systemEntries.forEach(sys => detectedSystems.add(sys));
+                        } else {
+                            // use an request to get folder files, is folderpath + ?get=list  
+                            api.log(`Scanning folder for system detection: ${folderPath}`);
+
+                            const protocol = ctx.protocol || 'http';
+                            const host = ctx.host || 'localhost';
+                            const urlList = `${protocol}://${host}/${encodeURI(folderPath)}/?get=list&folders=0`;
+                            api.log(`Fetching folder listing from URL: ${urlList}`);
+
+                            const headers = {};
+                            if (ctx.headers && ctx.headers.cookie) headers['Cookie'] = ctx.headers.cookie;
+                            if (ctx.headers && ctx.headers.authorization) headers['Authorization'] = ctx.headers.authorization;
+
+                            try {
+                                const text = await fetchText(urlList, 5000, headers);
+                                const fileList = text.split('\n').map(f => f.trim()).filter(f => f.length > 0);
+                                api.log(`Received ${fileList.length} entries from folder listing.`);
+                                const expiresInMinutes = Date.now() + ((parseInt(api.getConfig('cacheIcons')) || 720) * 60 * 1000)
+                                if (fileList.length === 0) {
+                                    api.log(`Folder listing is empty, skipping system detection for folder: ${folderPath}`);
+                                    systemDetectorCache[folderPath] = { expires: expiresInMinutes, systemEntries: [] };
+                                    api.log(`Cache will expire at: ${new Date(systemDetectorCache[folderPath].expires).toLocaleString()}`);
+
+                                } else {
+                                    fileList.forEach(fileEntry => {
+                                        const fileExt = path.extname(fileEntry).toLowerCase().slice(1).trim();
+                                        const systemEntries = SYSTEM_MAP[fileExt];
+                                        if (systemEntries && systemEntries.length > 0) {
+                                            systemDetectorCache[folderPath] = systemDetectorCache[folderPath] || {}
+                                            systemDetectorCache[folderPath].systemEntries = systemDetectorCache[folderPath].systemEntries || [];
+                                            systemDetectorCache[folderPath].expires =
+                                                systemEntries.forEach(sys => {
+                                                    detectedSystems.add(sys.system);
+                                                    api.log(`Detected system "${sys.system}" from file: ${fileEntry}`);
+                                                    systemDetectorCache[folderPath].systemEntries.push(sys.system);
+                                                    systemDetectorCache[folderPath].expires = expiresInMinutes;
+                                                    api.log(`Caching detected system "${sys.system}" for folder: ${folderPath}`);
+                                                    api.log(`Cache will expire at: ${new Date(systemDetectorCache[folderPath].expires).toLocaleString()}`);
+                                                });
+                                        }
+                                    });
+                                }
+                            } catch (err) {
+                                api.log(`Folder listing fetch failed: ${err.message}`);
+                            }
+                        }
+
                     }
 
                     // if only one system detected, use its icon
@@ -788,19 +921,24 @@ exports.init = function (api) {
                             });
                     } else if (detectedSystems.size > 0) {
                         /// return xbox icon as default
-
                         api.log(`Multiple systems detected for folder. Using default Xbox icon.`);
                         iconPath = path.join(iconsDir, 'XBOX_-_Microsoft_-_Xbox.png');
+                        ctx.set('Multiple-Systems', "true");
+
 
                     }
                 }
 
+                ctx.set('fileName', fileName);
+                ctx.set('folderPath', folderPath);
 
                 if (iconPath) {
+                    ctx.set('icon', iconPath);
                     if (fs.existsSync(iconPath)) {
                         api.log(`Serving image from path: ${iconPath}`);
                         ctx.type = 'image/png'
-                        return ctx.body = fs.createReadStream(iconPath)
+                        ctx.body = fs.createReadStream(iconPath);
+                        return;
                     } else {
                         api.log(`No icon found: ${iconPath}`);
                     }
@@ -824,7 +962,13 @@ exports.init = function (api) {
                 },
                 frontend: true
             },
-
+            cacheIcons: {
+                type: 'number',
+                defaultValue: 720,
+                label: 'Cache Icons Duration (Minutes)',
+                helperText: 'Duration to cache system detection icons in minutes. Set to 0 to disable caching. Default is 720 minutes (12 hours). This prevents repeated folder scans for icon detection.',
+                frontend: true
+            },
 
             igdbClientId: {
                 type: 'string',
