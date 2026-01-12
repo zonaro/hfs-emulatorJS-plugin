@@ -809,8 +809,6 @@ exports.init = function (api) {
 
         // Plugin configuration
         config: {
-
-
             emulatorsJsVersion: {
                 type: 'select',
                 defaultValue: 'stable',
@@ -819,22 +817,11 @@ exports.init = function (api) {
                     'Stable': 'stable',
                     'Latest': 'latest',
                     'Nightly': 'nightly',
-                }
-            },
-            showFileMenu: {
-                type: 'boolean',
-                defaultValue: true,
-                label: 'Show button in file menu'
-            },
-
-            max_save_slots: {
-                type: "number",
-                label: "Max save-state slots per game",
-                min: 1,
-                max: 100,
-                defaultValue: 10,
+                },
                 frontend: true
             },
+
+
             igdbClientId: {
                 type: 'string',
                 label: 'IGDB Client ID',

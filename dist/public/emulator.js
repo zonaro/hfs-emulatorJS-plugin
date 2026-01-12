@@ -10,8 +10,12 @@
 
     const pluginPublic = HFS.getPluginPublic();
     const config = HFS.getPluginConfig()
+
+    console.log('[EmulatorJS] HFS.getPluginConfig() returned:', config);
+
     const emuVersion = config.emulatorsJsVersion || 'stable'
     console.log('[EmulatorJS] HFS.getPluginPublic() returned:', pluginPublic);
+    console.log('[EmulatorJS] Using EmulatorJS version:', emuVersion);
 
 
     // Function to get all systems that can run a file with a given extension
@@ -388,7 +392,7 @@
         // Create dialog with HFS dialogLib
         const dialog = dialogLib.newDialog({
 
-            title: `Emulator - ${core} - ${decodeURIComponent(gameUrl.split('/').pop().split('?')[0])}`,
+            title: `EmulatorJS - ${emuVersion} - ${core} - ${decodeURIComponent(gameUrl.split('/').pop().split('?')[0])}`,
             className: 'emulatorjs-game-modal',
             closable: true,
             onClose: () => {
@@ -944,14 +948,10 @@
                     console.log('[EmulatorJS] View cover button clicked!')
 
                     try {
-                        const res = await HFS.customRestCall('getCover', { rom: entry.name })
+
                         const { dialogLib } = HFS
-
-                        if (!res || !res.success) {
-                            HFS.toast(res?.error || 'No cover found', 'warning')
-                            return false
-                        }
-
+                        const entryPath = entry.uri || entry.url;
+                        const srcCover = entryPath + '?get=game_cover';
                         // Create modal to show image
                         let dialog = dialogLib.newDialog({
                             title: 'Cover Preview',
@@ -977,15 +977,19 @@
                             container.style.padding = '10px'
 
                             const img = document.createElement('img')
-                            img.src = `data:${res.mimeType || 'image/jpeg'};base64,${res.data}`
+                            img.src = srcCover
                             img.style.maxWidth = '100%'
                             img.style.maxHeight = '70vh'
                             img.style.borderRadius = '4px'
                             img.alt = entry.name
+                            img.onerror = () => {
+                                dialog.close();
+                                HFS.toast('Error loading cover image', 'error')
+                            }
 
                             container.appendChild(img)
                             contentArea.insertBefore(container, contentArea.firstChild)
-                        }, 50)
+                        }, 100)
 
                         return true
                     } catch (err) {
@@ -1392,71 +1396,71 @@
             HFS.toast('Error opening icon selection', 'error')
         }
     }
-    if (config.showFileMenu !== false) {
-        HFS.onEvent('fileMenu', async ({ entry, menu }) => {
-            try {
-                // Verificar se é uma pasta
-                if (!entry.isFolder) return
 
-                // Verificar se a pasta tem arquivos compatíveis
-                const hasRoms = await folderHasCompatibleRoms(entry.uri || entry.url)
-                if (!hasRoms) return
+    HFS.onEvent('fileMenu', async ({ entry, menu }) => {
+        try {
+            // Verificar se é uma pasta
+            if (!entry.isFolder) return
 
-                // Verificar se o usuário é admin
-                const isAdmin = Boolean(HFS.state.adminUrl)
-                if (!isAdmin) return
+            // Verificar se a pasta tem arquivos compatíveis
+            const hasRoms = await folderHasCompatibleRoms(entry.uri || entry.url)
+            if (!hasRoms) return
 
-                console.log('[EmulatorJS] Adding "Set Console Icon" option for folder:', entry.name)
+            // Verificar se o usuário é admin
+            const isAdmin = Boolean(HFS.state.adminUrl)
+            if (!isAdmin) return
 
-                // Adicionar item de menu para definir ícone
-                const iconItem = {
-                    id: 'set-console-icon',
-                    label: 'Set Console Icon',
-                    subLabel: 'Choose an icon for this folder',
-                    icon: 'image',
-                    onClick: async () => {
-                        console.log('[EmulatorJS] Set Console Icon clicked!')
-                        await openIconSelectionModal(entry)
-                        return true
-                    }
+            console.log('[EmulatorJS] Adding "Set Console Icon" option for folder:', entry.name)
+
+            // Adicionar item de menu para definir ícone
+            const iconItem = {
+                id: 'set-console-icon',
+                label: 'Set Console Icon',
+                subLabel: 'Choose an icon for this folder',
+                icon: 'image',
+                onClick: async () => {
+                    console.log('[EmulatorJS] Set Console Icon clicked!')
+                    await openIconSelectionModal(entry)
+                    return true
                 }
-
-                menu.unshift(iconItem)
-
-                // Verificar se a pasta já tem um ícone customizado
-                const folderPath = entry.uri || entry.url
-                // Adicionar item de menu para remover ícone
-                const removeIconItem = {
-                    id: 'remove-console-icon',
-                    label: 'Remove Console Icon',
-                    subLabel: 'Remove the custom icon from this folder',
-                    icon: 'trash',
-                    onClick: async () => {
-                        console.log('[EmulatorJS] Remove Console Icon clicked!')
-                        try {
-                            const result = await HFS.customRestCall('removeFolderIcon', {
-                                folderPath: folderPath
-                            })
-
-                            if (result.success) {
-                                HFS.toast('Console icon removed successfully!', 'success')
-                            } else {
-                                HFS.toast('Error removing icon: ' + (result.error || 'Unknown error'), 'error')
-                            }
-                        } catch (err) {
-                            console.error('[EmulatorJS] Error removing folder icon:', err)
-                            HFS.toast('Error removing icon', 'error')
-                        }
-                        return true
-                    }
-                }
-
-                menu.unshift(removeIconItem)
-            } catch (err) {
-                console.error('[EmulatorJS] error in fileMenu handler for folders', err)
             }
-        })
-    }
+
+            menu.unshift(iconItem)
+
+            // Verificar se a pasta já tem um ícone customizado
+            const folderPath = entry.uri || entry.url
+            // Adicionar item de menu para remover ícone
+            const removeIconItem = {
+                id: 'remove-console-icon',
+                label: 'Remove Console Icon',
+                subLabel: 'Remove the custom icon from this folder',
+                icon: 'trash',
+                onClick: async () => {
+                    console.log('[EmulatorJS] Remove Console Icon clicked!')
+                    try {
+                        const result = await HFS.customRestCall('removeFolderIcon', {
+                            folderPath: folderPath
+                        })
+
+                        if (result.success) {
+                            HFS.toast('Console icon removed successfully!', 'success')
+                        } else {
+                            HFS.toast('Error removing icon: ' + (result.error || 'Unknown error'), 'error')
+                        }
+                    } catch (err) {
+                        console.error('[EmulatorJS] Error removing folder icon:', err)
+                        HFS.toast('Error removing icon', 'error')
+                    }
+                    return true
+                }
+            }
+
+            menu.unshift(removeIconItem)
+        } catch (err) {
+            console.error('[EmulatorJS] error in fileMenu handler for folders', err)
+        }
+    })
+
 
     // Hook para aplicar ícone customizado às pastas
     HFS.onEvent('entryIcon', async ({ entry }) => {
@@ -1470,10 +1474,10 @@
 
         console.log('[EmulatorJS] entryIcon hook called for', entry.name)
         const entryPath = entry.uri || entry.url;
+        const srcCover = entryPath + '?get=game_cover';
         console.log('[EmulatorJS] entry path:', entryPath)
 
         if (entry.isFolder || (entry.isFolder == false && compatibleExtensions.includes(entry.ext))) {
-            const srcCover = entryPath + '?get=game_cover';
             console.log('[EmulatorJS] Checking for custom icon at', srcCover)
             return HFS.h(ImgFallback, {
                 fallback: () => entry.getDefaultIcon(),
