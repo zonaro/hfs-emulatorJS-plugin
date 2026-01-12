@@ -1,11 +1,13 @@
 "use strict";
 
 
+
+
 // EmulatorJS Plugin for HFS
 // Allows opening ROMs in JavaScript emulators directly in the browser
 
 exports.description = "Plugin that integrates EmulatorJS to emulate classic console games directly in the browser"
-exports.version = 1.1;
+exports.version = 1.2;
 exports.apiRequired = 12.9;
 
 
@@ -20,42 +22,44 @@ exports.init = function (api) {
     const http = require('http');
     const path = require('path');
 
-    const configuredBase = api.getConfig('storageBasePath') || api.storageDir;
+
     const publicDir = path.join(__dirname, 'public')
-    const coversDir = path.join(configuredBase, 'covers')
-    const gameInfoDir = path.join(configuredBase, 'gameinfo')
-    const usersRoot = path.join(configuredBase, "users");
     const iconsDir = path.join(publicDir, 'console-icons')
 
+    const configuredBase = api.storageDir;
+    const coversDir = path.join(configuredBase, 'covers')
+    const gameInfoDir = path.join(configuredBase, 'gameinfo')
+    const systemMapPath = path.join(publicDir, 'system_map.js');
+    const mappingFile = path.join(configuredBase, 'icon-mappings.json')
+
+
+    // get system_map.js and include it
+
+    if (fs.existsSync(systemMapPath)) {
+        api.log('Loaded: system_map.js');
+    } else {
+        api.setError('EmulatorJS plugin: system_map.js not found in public directory.');
+    }
+
+    const { SYSTEM_MAP, compatibleExtensions } = require(systemMapPath);
 
 
     ensureDir(fs, path, configuredBase);
     ensureDir(fs, path, gameInfoDir);
-    ensureDir(fs, path, usersRoot);
     ensureDir(fs, path, coversDir);
-    ensureDir(fs, path, iconsDir);
+
 
     // Checks existence of public assets
     if (!fs.existsSync(path.join(publicDir, 'emulator.js')) || !fs.existsSync(path.join(publicDir, 'emulator.css'))) {
         api.setError('EmulatorJS plugin: missing public files (emulator.js or emulator.css). Check the public/ folder.')
     }
 
-    // Utility: safe base64 decode
-    function fromBase64(b64) {
-        return Buffer.from(b64, "base64");
-    }
+
 
     // Utility: ensure directory exists recursively
     function ensureDir(fs, path, dir) {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     }
-
-    // Utility: normalize a game name into a filesystem-friendly base
-    function gameBase(api, game) {
-        const base = game.replace(/\\/g, "/").split("/").pop();
-        return api.normalizeFilename(base.replace(/[^a-zA-Z0-9._-]/g, "_"));
-    }
-
 
     // Function to get game info from cache
     function getGameInfoFromCache(romName) {
@@ -83,63 +87,6 @@ exports.init = function (api) {
             return false
         }
     }
-
-    function getUsername(ctx) {
-        return api.getCurrentUsername(ctx) || "";
-    }
-
-    function userRoot(username) {
-        return path.join(usersRoot, username);
-    }
-
-    function userDirs(username) {
-        const root = userRoot(username);
-        const savesDir = path.join(root, "saves"); // .state files
-        const screenshotsDir = path.join(root, "screenshots"); // .png previews
-        const sramDir = path.join(root, "sram"); // .sram files
-        ensureDir(fs, path, savesDir);
-        ensureDir(fs, path, screenshotsDir);
-        ensureDir(fs, path, sramDir);
-        return { root, savesDir, screenshotsDir, sramDir };
-    }
-
-    function listSaveStatesFor(username, game) {
-        const { savesDir, screenshotsDir } = userDirs(username);
-        const base = path.parse(gameBase(api, game)).name;
-        const glob = api.require("glob");
-        const files = glob.sync(path.join(savesDir, `${base}_*.state`));
-        return files.map(f => {
-            const m = f.match(/_(\d+)\.state$/);
-            const slot = m ? parseInt(m[1]) : undefined;
-            const ts = fs.existsSync(f) ? fs.statSync(f).mtimeMs : 0;
-            const screenshot = path.join(screenshotsDir, `${base}_${slot}.png`);
-            return {
-                slot,
-                timestamp: ts,
-                hasScreenshot: fs.existsSync(screenshot)
-            };
-        }).sort((a, b) => (b?.timestamp || 0) - (a?.timestamp || 0));
-    }
-
-    function stateFilePath(username, game, slot) {
-        const { savesDir } = userDirs(username);
-        const base = path.parse(gameBase(api, game)).name;
-        return path.join(savesDir, `${base}_${slot}.state`);
-    }
-
-    function screenshotFilePath(username, game, slot) {
-        const { screenshotsDir } = userDirs(username);
-        const base = path.parse(gameBase(api, game)).name;
-        return path.join(screenshotsDir, `${base}_${slot}.png`);
-    }
-
-    function sramFilePath(username, game) {
-        const { sramDir } = userDirs(username);
-        const base = path.parse(gameBase(api, game)).name;
-        return path.join(sramDir, `${base}.sram`);
-    }
-
-
     // Function to get IGDB authentication token
     async function getIGDBToken() {
         if (igdbToken && tokenExpiry && Date.now() < tokenExpiry) {
@@ -410,111 +357,6 @@ exports.init = function (api) {
 
     // Custom REST API
     const customRest = {
-
-        // === Save States and SRAM Management ===
-
-        /// List save states and SRAM info for a game
-        async list({ game }, ctx) {
-            const username = getUsername(ctx);
-            if (!username) ctx.throw(401, "Not authenticated");
-            const saves = listSaveStatesFor(username, game);
-            const sramPath = sramFilePath(username, game);
-            return {
-                saveStates: saves,
-                sramExists: fs.existsSync(sramPath),
-                sramBytes: fs.existsSync(sramPath) ? fs.statSync(sramPath).size : 0
-            };
-        },
-
-        /// Save a state
-        async saveState({ game, slot, stateBase64, screenshotBase64 }, ctx) {
-            const username = getUsername(ctx);
-            if (!username) ctx.throw(401, "Not authenticated");
-            const maxSlots = api.getConfig("max_save_slots") ?? 10;
-            const n = Number(slot);
-            if (!Number.isInteger(n) || n < 1 || n > maxSlots)
-                ctx.throw(400, "Invalid slot");
-            const stateBuf = fromBase64(stateBase64 || "");
-            if (!stateBuf?.length) ctx.throw(400, "Empty state");
-            const statePath = stateFilePath(username, game, n);
-            const shotPath = screenshotFilePath(username, game, n);
-            fs.writeFileSync(statePath, stateBuf);
-            if (screenshotBase64) {
-                const png = fromBase64(screenshotBase64);
-                if (png?.length) fs.writeFileSync(shotPath, png);
-            }
-            api.log('[EmulatorJS] saveState', { user: username, game, slot: n, bytes: stateBuf.length });
-            return { ok: true };
-        },
-
-        /// Delete a state
-        async deleteState({ game, slot }, ctx) {
-            const username = getUsername(ctx);
-            if (!username) ctx.throw(401, "Not authenticated");
-            const n = Number(slot);
-            const statePath = stateFilePath(username, game, n);
-            const shotPath = screenshotFilePath(username, game, n);
-            const existed = fs.existsSync(statePath) || fs.existsSync(shotPath);
-            if (fs.existsSync(statePath)) fs.unlinkSync(statePath);
-            if (fs.existsSync(shotPath)) fs.unlinkSync(shotPath);
-            return { ok: true, existed };
-        },
-
-        /// Load a state
-        async loadState({ game, slot }, ctx) {
-            const username = getUsername(ctx);
-            if (!username) ctx.throw(401, "Not authenticated");
-            const n = Number(slot);
-            const statePath = stateFilePath(username, game, n);
-            const shotPath = screenshotFilePath(username, game, n);
-            if (!fs.existsSync(statePath)) {
-                return { success: false, error: 'State not found', status: 404 };
-            }
-            try {
-                const data = fs.readFileSync(statePath);
-                const result = {
-                    success: true,
-                    stateBase64: data.toString('base64')
-                };
-                if (fs.existsSync(shotPath)) {
-                    result.screenshotBase64 = fs.readFileSync(shotPath).toString('base64');
-                }
-                api.log('[EmulatorJS] loadState', { user: username, game, slot: n, bytes: data.length });
-                return result;
-            } catch (err) {
-                api.log('[EmulatorJS] loadState error: ' + err.message);
-                return { success: false, error: err.message, status: 500 };
-            }
-        },
-
-        /// Save SRAM
-        async saveSram({ game, dataBase64 }, ctx) {
-            const username = getUsername(ctx);
-            if (!username) ctx.throw(401, "Not authenticated");
-            const buf = fromBase64(dataBase64 || "");
-            if (!buf?.length) ctx.throw(400, "Empty SRAM");
-            const f = sramFilePath(username, game);
-            fs.writeFileSync(f, buf);
-            api.log('[EmulatorJS] saveSram', { user: username, game, bytes: buf.length });
-            return { ok: true };
-        },
-
-        /// Get SRAM
-        async getSram({ game }, ctx) {
-            const username = getUsername(ctx);
-            if (!username) ctx.throw(401, "Not authenticated");
-            const f = sramFilePath(username, game);
-            if (!fs.existsSync(f)) return { success: false, error: 'No SRAM', status: 404 };
-            try {
-                const data = fs.readFileSync(f);
-                return { success: true, dataBase64: data.toString('base64'), bytes: data.length };
-            } catch (err) {
-                api.log('[EmulatorJS] getSram error: ' + err.message);
-                return { success: false, error: err.message, status: 500 };
-            }
-        },
-
-
         /// Search for game covers
         async searchCovers({ romName }) {
             try {
@@ -673,58 +515,6 @@ exports.init = function (api) {
         },
 
 
-        async getCover({ rom }) {
-            try {
-                if (!rom) {
-                    return { success: false, error: 'Missing rom parameter', status: 400 }
-                }
-
-                api.log(`[getCover] Looking for cover for ROM: ${rom}`)
-
-                // Check in plugin covers directory with different extensions
-                const coverPathJpg = path.join(coversDir, rom + '.jpg')
-                const coverPathPng = path.join(coversDir, rom + '.png')
-                const coverPathJpeg = path.join(coversDir, rom + '.jpeg')
-
-                if (fs.existsSync(coverPathPng)) {
-                    api.log(`[getCover] Found cover in plugin covers: ${coverPathPng}`)
-                    const imageData = fs.readFileSync(coverPathPng)
-                    return {
-                        success: true,
-                        data: imageData.toString('base64'),
-                        mimeType: 'image/png'
-                    }
-                }
-
-                if (fs.existsSync(coverPathJpg)) {
-                    api.log(`[getCover] Found cover in plugin covers: ${coverPathJpg}`)
-                    const imageData = fs.readFileSync(coverPathJpg)
-                    return {
-                        success: true,
-                        data: imageData.toString('base64'),
-                        mimeType: 'image/jpeg'
-                    }
-                }
-
-
-
-                if (fs.existsSync(coverPathJpeg)) {
-                    api.log(`[getCover] Found cover in plugin covers: ${coverPathJpeg}`)
-                    const imageData = fs.readFileSync(coverPathJpeg)
-                    return {
-                        success: true,
-                        data: imageData.toString('base64'),
-                        mimeType: 'image/jpeg'
-                    }
-                }
-
-                api.log(`[getCover] Cover not found for ROM: ${rom}`)
-                return { success: false, error: 'Cover not found', status: 404 }
-            } catch (err) {
-                api.log(`[getCover] Error: ${err.message}`)
-                return { success: false, error: err.message, status: 500 }
-            }
-        },
 
         async setFolderIcon({ folderPath, iconName }) {
             try {
@@ -738,7 +528,7 @@ exports.init = function (api) {
                 const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
 
                 // Save icon mapping
-                const mappingFile = path.join(configuredBase, 'icon-mappings.json')
+
                 let mappings = {}
 
                 if (fs.existsSync(mappingFile)) {
@@ -761,41 +551,7 @@ exports.init = function (api) {
             }
         },
 
-        async getFolderIcon({ folderPath }) {
-            try {
-                if (!folderPath) {
-                    return { success: false, error: 'Missing folderPath parameter' }
-                }
 
-                api.log(`[getFolderIcon] Getting icon for folder: ${folderPath}`)
-
-                // Normalize folder path
-                const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
-
-                const mappingFile = path.join(configuredBase, 'icon-mappings.json')
-
-                if (!fs.existsSync(mappingFile)) {
-                    return { success: false, error: 'No icon mapping found' }
-                }
-
-                const data = fs.readFileSync(mappingFile, 'utf8')
-                const mappings = JSON.parse(data)
-
-                if (mappings[normalizedPath]) {
-                    api.log(`[getFolderIcon] Found icon: ${mappings[normalizedPath]}`)
-                    return {
-                        success: true,
-                        iconName: mappings[normalizedPath],
-                        dataUrl: `data:image/png;base64,${fs.readFileSync(path.join(iconsDir, mappings[normalizedPath])).toString('base64')}`
-                    }
-                }
-
-                return { success: false, error: 'No icon for this folder' }
-            } catch (err) {
-                api.log(`[getFolderIcon] Error: ${err.message}`)
-                return { success: false, error: err.message }
-            }
-        },
 
         async getAvailableIcons() {
             try {
@@ -847,7 +603,7 @@ exports.init = function (api) {
                 // Normalize folder path
                 const normalizedPath = folderPath.replace(/^\/+|\/+$/g, '')
 
-                const mappingFile = path.join(configuredBase, 'icon-mappings.json')
+
 
                 if (!fs.existsSync(mappingFile)) {
                     return { success: false, error: 'No icon mapping found' }
@@ -881,21 +637,180 @@ exports.init = function (api) {
 
     return {
         // Frontend files (paths relative to the plugin's public folder)
-        frontend_js: 'emulator.js',
+        frontend_js: ['system_map.js', 'emulator.js'],
         frontend_css: 'emulator.css',
+        middleware(ctx) {
+
+            const allowedGets = ['game_cover', 'game_icon']
+            const typeGet = ctx.query.get;
+            if (!allowedGets.includes(typeGet)) return;
+
+            ctx.state.considerAsGui = true
+            ctx.state.download_counter_ignore = true
+            function error(code, body) {
+                ctx.status = code
+                ctx.type = 'text'
+                ctx.body = body
+            }
+            return async () => {
+                let fileName = '';
+                let isFile = null;
+                if (ctx.path.endsWith('/')) {
+                    fileName = ctx.path.trim();
+                    fileName = fileName.slice(0, -1).trim();
+                    isFile = false;
+                } else {
+                    fileName = ctx.path.split('/').pop().trim();
+                    isFile = true;
+                }
+
+                if (isFile == null) {
+                    api.log('Unable to determine if path is file or folder: ' + fileName);
+                    return error(400, 'Bad Request: Unable to determine if path is file or folder');
+                }
+
+                fileName = decodeURIComponent(fileName);
+                /// first, get the platform icon if available
+
+                let isCover = typeGet === 'game_cover'
+
+                api.log(`Requested ${typeGet} for entry: ${fileName}`)
+
+
+                let iconPath = null;
+                let mappings = null
+                let systemEntries = null;
+                let mappedIcon = null;
+
+                const extension = isFile == true ? path.extname(fileName).toLowerCase().slice(1).trim() : null;
+                const folderPath = isFile == true ? path.dirname(fileName) : isFile == false ? fileName : null;
+
+                if (isCover && extension && compatibleExtensions.includes(extension)) {
+
+                    const coverPathPng = path.join(coversDir, fileName + '.png')
+                    const coverPathJpg = path.join(coversDir, fileName + '.jpg')
+                    const coverPathJpeg = path.join(coversDir, fileName + '.jpeg')
+
+                    if (fs.existsSync(coverPathPng)) {
+                        api.log(`Serving cover from path: ${coverPathPng}`)
+                        iconPath = coverPathPng
+                    } else if (fs.existsSync(coverPathJpg)) {
+                        api.log(`Serving cover from path: ${coverPathJpg}`)
+                        iconPath = coverPathJpg
+                    } else if (fs.existsSync(coverPathJpeg)) {
+                        api.log(`Serving cover from path: ${coverPathJpeg}`)
+                        iconPath = coverPathJpeg
+                    }
+                }
+
+                if (fs.existsSync(mappingFile)) {
+                    api.log(`Loading icon mappings from: ${mappingFile}`)
+                    const data = fs.readFileSync(mappingFile, 'utf8')
+                    mappings = JSON.parse(data)
+                    if (mappings) {
+
+                        /// order mappings from most specific to least specific
+                        mappings = Object.keys(mappings).sort((a, b) => b.length - a.length).reduce((obj, key) => {
+                            obj[key] = mappings[key];
+                            return obj;
+                        }, {});
+
+                        Object.keys(mappings).forEach(savedMap => {
+                            api.log(`Mapping: "${savedMap}" => "${mappings[savedMap]}"`)
+                            // check if folderPath contains the savedMap
+                            if (mappedIcon == null && folderPath.includes(savedMap)) {
+                                mappedIcon = mappings[savedMap];
+                                api.log(`Using mapping for folder "${folderPath}": ${mappedIcon} (matched: "${savedMap}")`)
+                            }
+                        });
+
+                        if (mappedIcon) {
+                            api.log(`Found mapping for folder "${folderPath}": ${mappedIcon}`)
+                            mappedIcon = path.join(iconsDir, mappedIcon);
+                            if (fs.existsSync(mappedIcon)) {
+                                api.log(`Found mapped icon "${mappedIcon}" for folder: ${folderPath}`)
+                                iconPath = mappedIcon;
+                            } else {
+                                api.log(`Mapped icon "${mappedIcon}" does not exist on disk.`)
+                                mappedIcon = null;
+                            }
+                        } else {
+                            api.log(`No mapping found for folder: "${folderPath}"`)
+                        }
+                    } else {
+                        api.log(`No valid mappings found in file.`)
+
+                    }
+                }
+
+                if (!iconPath) {
+                    const detectedSystems = new Set();
+                    // get folder files and check possible systems
+                    if (extension && compatibleExtensions.includes(extension)) {
+                        systemEntries = SYSTEM_MAP[extension];
+                        if (systemEntries) {
+                            for (const sys of systemEntries) {
+                                detectedSystems.add(sys.system);
+                                api.log(`Detected system "${sys.system}" from extension: .${extension}`);
+                            }
+                        }
+                    }
+
+                    if (detectedSystems.size === 0 && fs.existsSync(folderPath)) {
+                        const files = fs.readdirSync(folderPath)
+                        api.log(`Scanning folder for system detection: ${folderPath}`);
+                        for (const file of files) {
+                            const ext = path.extname(file).toLowerCase().slice(1).trim();
+                            if (compatibleExtensions.includes(ext)) {
+                                var systems = SYSTEM_MAP[ext];
+                                for (const sys of systems) {
+                                    detectedSystems.add(sys.system);
+                                    api.log(`Detected system "${sys.system}" from file: ${file}`);
+                                }
+                            }
+                        }
+                    }
+
+                    // if only one system detected, use its icon
+                    if (detectedSystems.size === 1) {
+                        Object.values(SYSTEM_MAP)
+                            .forEach(systemEntries => {
+                                systemEntries.forEach(systemEntry => {
+                                    if (detectedSystems.has(systemEntry.system)) {
+                                        api.log(`Single system "${systemEntry.system}" detected for folder. Using its icon.`);
+                                        iconPath = path.join(iconsDir, systemEntry.icon);
+                                    }
+                                });
+                            });
+                    } else if (detectedSystems.size > 0) {
+                        /// return xbox icon as default
+
+                        api.log(`Multiple systems detected for folder. Using default Xbox icon.`);
+                        iconPath = path.join(iconsDir, 'XBOX_-_Microsoft_-_Xbox.png');
+
+                    }
+                }
+
+
+                if (iconPath) {
+                    if (fs.existsSync(iconPath)) {
+                        api.log(`Serving image from path: ${iconPath}`);
+                        ctx.type = 'image/png'
+                        return ctx.body = fs.createReadStream(iconPath)
+                    } else {
+                        api.log(`No icon found: ${iconPath}`);
+                    }
+                } else {
+                    api.log(`Undefined icon`);
+                }
+                return error(404, `${typeGet} not found`);
+            }
+        },
 
         // Plugin configuration
         config: {
 
-            storageBasePath: {
-                type: "real_path",
-                folders: true,
-                label: "Storage Base Path",
-                helperText: "Folder where the plugin will save SRAM, save states, covers, and gameinfo.",
-                frontend: false,
-                defaultValue: configuredBase,
-                defaultPath: configuredBase
-            },
+
             emulatorsJsVersion: {
                 type: 'select',
                 defaultValue: 'stable',

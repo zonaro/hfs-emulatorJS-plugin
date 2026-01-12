@@ -1,6 +1,8 @@
 'use strict';
 {
 
+    /// include SYSTEM_MAPS
+
 
 
     // EmulatorJS Plugin for HFS
@@ -10,221 +12,6 @@
     const config = HFS.getPluginConfig()
     const emuVersion = config.emulatorsJsVersion || 'stable'
     console.log('[EmulatorJS] HFS.getPluginPublic() returned:', pluginPublic);
-
-
-
-    // Mapping of extensions to systems (cores)
-    // Each extension can now map to multiple systems [{ system, name }, ...]
-    // When an extension supports multiple systems, multiple Play buttons will be shown
-    // Based on EmulatorJS documentation: https://emulatorjs.org/docs/systems and https://emulatorjs.org/docs4devs/cores
-    const SYSTEM_MAP = {
-        // ===== NINTENDO SYSTEMS =====    
-
-
-        // NES/Famicom - Cores: fceumm (default), nestopia
-        'nes': [{ system: 'nes', name: 'NES/Famicom', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
-        'fds': [{ system: 'nes', name: 'Famicom Disk System', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
-        'unif': [{ system: 'nes', name: 'NES/Famicom', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
-        'unf': [{ system: 'nes', name: 'NES/Famicom', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
-
-        // SNES/Super Famicom - Cores: snes9x (default), bsnes
-        'snes': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-        'smc': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-        'sfc': [{ system: 'snes', name: 'Super Famicom', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-        'fig': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-        'gd3': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-        'gd7': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-        'dx2': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-        'bsx': [{ system: 'snes', name: 'SNES Satellaview', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-        'swc': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-
-        // Nintendo 64 - Cores: mupen64plus_next (default), parallel-n64
-        'n64': [{ system: 'n64', name: 'Nintendo 64', core: ['mupen64plus_next', 'parallel-n64'], icon: 'N64_-_Nintendo_-_Nintendo_64.png' }],
-        'z64': [{ system: 'n64', name: 'Nintendo 64', core: ['mupen64plus_next', 'parallel-n64'], icon: 'N64_-_Nintendo_-_Nintendo_64.png' }],
-        'v64': [{ system: 'n64', name: 'Nintendo 64', core: ['mupen64plus_next', 'parallel-n64'], icon: 'N64_-_Nintendo_-_Nintendo_64.png' }],
-
-        // Game Boy / Game Boy Color - Cores: gambatte (default), mgba
-        'gb': [{ system: 'gb', name: 'Game Boy', core: ['gambatte'], icon: 'GB_-_Nintendo_-_Game_Boy.png' }],
-        'gbc': [{ system: 'gb', name: 'Game Boy Color', core: ['gambatte'], icon: 'GBC_-_Nintendo_-_Game_Boy_Color.png' }],
-        'sgb': [{ system: 'gb', name: 'Super Game Boy', core: ['gambatte'], icon: 'GB_-_Nintendo_-_Game_Boy.png' }],
-
-        // Game Boy Advance - Core: mgba
-        'gba': [{ system: 'gba', name: 'Game Boy Advance', core: ['mgba'], icon: 'GBA_-_Nintendo_-_Game_Boy_Advance.png' }],
-
-        // Nintendo DS - Cores: melonds (default), desmume2015, desmume
-        'nds': [{ system: 'nds', name: 'Nintendo DS', core: ['melonds', 'desmume2015', 'desmume'], icon: 'NDS_-_Nintendo_-_Nintendo_DS.png' }],
-
-        // Virtual Boy - Core: beetle_vb
-        'vb': [{ system: 'vb', name: 'Virtual Boy', core: ['beetle_vb'], icon: 'VB_-_Nintendo_-_Virtual_Boy.png' }],
-        'vboy': [{ system: 'vb', name: 'Virtual Boy', core: ['beetle_vb'], icon: 'VB_-_Nintendo_-_Virtual_Boy.png' }],
-
-        // ===== SEGA SYSTEMS =====
-
-        // Sega Mega Drive/Genesis - Cores: genesis_plus_gx (default), genesis_plus_gx_wide, picodrive
-        'md': [{ system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-        'smd': [{ system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-        'gen': [{ system: 'segaMD', name: 'Sega Genesis', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-        'sg': [{ system: 'segaMD', name: 'Sega Genesis', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-
-        // Sega Master System - Cores: smsplus (default), genesis_plus_gx, picodrive
-        'sms': [{ system: 'segaMS', name: 'Sega Master System', core: ['smsplus', 'genesis_plus_gx', 'picodrive'], icon: 'MS_-_Sega_-_Master_System.png' }],
-
-        // Sega Game Gear - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
-        'gg': [{ system: 'segaGG', name: 'Sega Game Gear', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'GG_-_Sega_-_Game_Gear.png' }],
-
-        // Sega CD - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
-        'cue': [
-            { system: 'segaCD', name: 'Sega CD', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' },
-            { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
-        ],
-        'chd': [
-            { system: 'segaCD', name: 'Sega CD', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' },
-            { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
-        ],
-
-        // Sega 32X - Core: picodrive
-        '32x': [{ system: 'sega32x', name: 'Sega 32X', core: ['picodrive'], icon: '32X_-_Sega_-_32X.png' }],
-
-        // Sega Saturn - Core: yabause
-        'ccd': [{ system: 'segaSaturn', name: 'Sega Saturn', core: ['yabause'], icon: 'SAT_-_Sega_-_Saturn.png' }],
-        'mds': [{ system: 'segaSaturn', name: 'Sega Saturn', core: ['yabause'], icon: 'SAT_-_Sega_-_Saturn.png' }],
-
-        // ===== SONY SYSTEMS =====
-
-        // PlayStation - Cores: pcsx_rearmed (default), mednafen_psx_hw
-        'bin': [
-            { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' },
-            { system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }
-        ],
-        'iso': [
-            { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' },
-            { system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }
-        ],
-        'img': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
-        'toc': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
-        'exe': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
-        'm3u': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
-
-        // PlayStation Portable - Core: ppsspp (requires threads)
-        'pbp': [{ system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }],
-        'cso': [{ system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }],
-        'elf': [{ system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }],
-        'prx': [{ system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }],
-
-        // ===== ATARI SYSTEMS =====
-
-        // Atari 2600 - Core: stella2014
-        'a26': [{ system: 'atari2600', name: 'Atari 2600', core: ['stella2014'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
-        'bin': [
-            { system: 'atari2600', name: 'Atari 2600', core: ['stella2014'], icon: 'A2600_-_Atari_-_Atari_2600.png' },
-            { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' },
-            { system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }
-        ],
-
-        // Atari 5200 - Core: a5200
-        'a52': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
-        'car': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
-
-        // Atari 7800 - Core: prosystem
-        'a78': [{ system: 'atari7800', name: 'Atari 7800', core: ['prosystem'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
-
-        // Atari Lynx - Core: handy
-        'lnx': [{ system: 'lynx', name: 'Atari Lynx', core: ['handy'], icon: 'LYNX_-_Atari_-_Lynx.png' }],
-        'lyx': [{ system: 'lynx', name: 'Atari Lynx', core: ['handy'], icon: 'LYNX_-_Atari_-_Lynx.png' }],
-        'o': [{ system: 'lynx', name: 'Atari Lynx', core: ['handy'], icon: 'LYNX_-_Atari_-_Lynx.png' }],
-
-        // Atari Jaguar - Core: virtualjaguar
-        'j64': [{ system: 'jaguar', name: 'Atari Jaguar', core: ['virtualjaguar'], icon: 'JAG_-_Atari_-_Jaguar.png' }],
-        'jag': [{ system: 'jaguar', name: 'Atari Jaguar', core: ['virtualjaguar'], icon: 'JAG_-_Atari_-_Jaguar.png' }],
-
-        // ===== ARCADE SYSTEMS =====
-
-        // Arcade/MAME - Cores: fbneo (default), fbalpha2012_cps1, fbalpha2012_cps2, mame2003, mame2003_plus
-        'zip': [{ system: 'arcade', name: 'Arcade/MAME', core: ['fbneo', 'fbalpha2012_cps1', 'fbalpha2012_cps2', 'mame2003', 'mame2003_plus'], icon: 'ARC_-_FBNeo_-_Arcade.png' }],
-        '7z': [{ system: 'arcade', name: 'Arcade/MAME', core: ['fbneo', 'fbalpha2012_cps1', 'fbalpha2012_cps2', 'mame2003', 'mame2003_plus'], icon: 'ARC_-_FBNeo_-_Arcade.png' }],
-
-        // MAME 2003 - Cores: mame2003 (default), mame2003_plus
-        // Uses same extensions as arcade
-
-        // ===== COMMODORE SYSTEMS =====
-
-        // Commodore 64 - Core: vice_x64sc
-        'd64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-        'g64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-        'x64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-        't64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-        'tap': [
-            { system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' },
-            { system: 'vice_xvic', name: 'Commodore VIC-20', core: ['vice_xvic'], icon: 'VICE64_-_Commodore_-_C64.png' }
-        ],
-        'prg': [
-            { system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' },
-            { system: 'vice_x128', name: 'Commodore 128', core: ['vice_x128'], icon: 'VICE128_-_Commodore_-_C128.png' }
-        ],
-        'p00': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-        'crt': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-
-        // Commodore 128 - Core: vice_x128
-        'd81': [{ system: 'vice_x128', name: 'Commodore 128' }],
-
-
-
-        // Commodore Amiga - Core: puae
-        'adf': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'dms': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'fdi': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'ipf': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'adz': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'hdf': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'hdz': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'lha': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'slave': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'info': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-        'rp9': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-
-        // ===== OTHER SYSTEMS =====
-
-        // 3DO - Core: opera
-        '3do': [{ system: '3do', name: '3DO', core: ['opera'], icon: '3DO_-_Panasonic_-_3DO.png' }],
-
-        // ColecoVision - Core: gearcoleco
-        'col': [{ system: 'coleco', name: 'ColecoVision', core: ['gearcoleco'], icon: 'COLECO_-_Coleco_-_ColecoVision.png' }],
-        'cv': [{ system: 'coleco', name: 'ColecoVision', core: ['gearcoleco'], icon: 'COLECO_-_Coleco_-_ColecoVision.png' }],
-        'rom': [{ system: 'coleco', name: 'ColecoVision', core: ['gearcoleco'], icon: 'COLECO_-_Coleco_-_ColecoVision.png' }],
-
-        // NEC PC Engine/TurboGrafx-16 - Core: mednafen_pce
-        'pce': [{ system: 'pce', name: 'PC Engine/TurboGrafx-16', core: ['mednafen_pce'], icon: 'PCE_-_NEC_-_PC_Engine.png' }],
-        'sgx': [{ system: 'pce', name: 'PC Engine SuperGrafx', core: ['mednafen_pce'], icon: 'PCE_-_NEC_-_PC_Engine.png' }],
-
-        // NEC PC-FX - Core: mednafen_pcfx
-        'pcfx': [{ system: 'pcfx', name: 'PC-FX', core: ['mednafen_pcfx'], icon: 'PCFX_-_NEC_-_PC-FX.png' }],
-        'toc': [
-            { system: 'pcfx', name: 'PC-FX', core: ['mednafen_pcfx'], icon: 'PCFX_-_NEC_-_PC-FX.png' },
-            { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
-        ],
-
-        // Neo Geo Pocket - Core: mednafen_ngp
-        'ngp': [{ system: 'ngp', name: 'Neo Geo Pocket', core: ['mednafen_ngp'], icon: 'NGP_-_SNK_-_Neo_Geo_Pocket.png' }],
-        'ngc': [{ system: 'ngp', name: 'Neo Geo Pocket Color', core: ['mednafen_ngp'], icon: 'NGP_-_SNK_-_Neo_Geo_Pocket.png' }],
-        'ngpc': [{ system: 'ngp', name: 'Neo Geo Pocket Color', core: ['mednafen_ngp'], icon: 'NGP_-_SNK_-_Neo_Geo_Pocket.png' }],
-        'npc': [{ system: 'ngp', name: 'Neo Geo Pocket Color', core: ['mednafen_ngp'], icon: 'NGP_-_SNK_-_Neo_Geo_Pocket.png' }],
-
-        // WonderSwan - Core: mednafen_wswan
-        'ws': [{ system: 'ws', name: 'WonderSwan', core: ['mednafen_wswan'], icon: 'WS_-_Bandai_-_WonderSwan.png' }],
-        'wsc': [{ system: 'ws', name: 'WonderSwan Color', core: ['mednafen_wswan'], icon: 'WS_-_Bandai_-_WonderSwan.png' }],
-        'pc2': [{ system: 'ws', name: 'WonderSwan', core: ['mednafen_wswan'], icon: 'WS_-_Bandai_-_WonderSwan.png' }],
-
-        // DOSBOX - Core: dosbox_pure (requires special setup)
-        'exe': [
-            { system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' },
-            { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
-        ],
-        'com': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
-        'bat': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
-        'conf': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
-        'dosz': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
-    }
-
 
 
     // Function to get all systems that can run a file with a given extension
@@ -1723,45 +1510,33 @@
 
                 // Verificar se a pasta já tem um ícone customizado
                 const folderPath = entry.uri || entry.url
-                try {
-                    const folderIconResult = await HFS.customRestCall('getFolderIcon', {
-                        folderPath: folderPath
-                    })
+                // Adicionar item de menu para remover ícone
+                const removeIconItem = {
+                    id: 'remove-console-icon',
+                    label: 'Remove Console Icon',
+                    subLabel: 'Remove the custom icon from this folder',
+                    icon: 'trash',
+                    onClick: async () => {
+                        console.log('[EmulatorJS] Remove Console Icon clicked!')
+                        try {
+                            const result = await HFS.customRestCall('removeFolderIcon', {
+                                folderPath: folderPath
+                            })
 
-                    if (folderIconResult.success && folderIconResult.iconName) {
-                        console.log('[EmulatorJS] Folder has custom icon, adding remove option')
-
-                        // Adicionar item de menu para remover ícone
-                        const removeIconItem = {
-                            id: 'remove-console-icon',
-                            label: 'Remove Console Icon',
-                            subLabel: 'Remove the custom icon from this folder',
-                            icon: 'trash',
-                            onClick: async () => {
-                                console.log('[EmulatorJS] Remove Console Icon clicked!')
-                                try {
-                                    const result = await HFS.customRestCall('removeFolderIcon', {
-                                        folderPath: folderPath
-                                    })
-
-                                    if (result.success) {
-                                        HFS.toast('Console icon removed successfully!', 'success')
-                                    } else {
-                                        HFS.toast('Error removing icon: ' + (result.error || 'Unknown error'), 'error')
-                                    }
-                                } catch (err) {
-                                    console.error('[EmulatorJS] Error removing folder icon:', err)
-                                    HFS.toast('Error removing icon', 'error')
-                                }
-                                return true
+                            if (result.success) {
+                                HFS.toast('Console icon removed successfully!', 'success')
+                            } else {
+                                HFS.toast('Error removing icon: ' + (result.error || 'Unknown error'), 'error')
                             }
+                        } catch (err) {
+                            console.error('[EmulatorJS] Error removing folder icon:', err)
+                            HFS.toast('Error removing icon', 'error')
                         }
-
-                        menu.unshift(removeIconItem)
+                        return true
                     }
-                } catch (err) {
-                    console.error('[EmulatorJS] Error checking folder icon:', err)
                 }
+
+                menu.unshift(removeIconItem)
             } catch (err) {
                 console.error('[EmulatorJS] error in fileMenu handler for folders', err)
             }
@@ -1771,267 +1546,30 @@
     // Hook para aplicar ícone customizado às pastas
     HFS.onEvent('entryIcon', async ({ entry }) => {
 
-        // Ícone SVG do controle de jogo (inline)
-        const gameControllerIcon = HFS.h('svg', {
-            viewBox: '0 0 512 512',
-            xmlns: 'http://www.w3.org/2000/svg',
-            style: {
-                width: '60px',
-                height: '60px',
-                borderRadius: '2px',
-                color: 'var(--emulatorjs-icon-color, currentColor)',
-                flexShrink: 0
-            }
-        },
-            HFS.h('path', {
-                d: 'M467.51,248.83c-18.4-83.18-45.69-136.24-89.43-149.17A91.5,91.5,0,0,0,352,96c-26.89,0-48.11,16-96,16s-69.15-16-96-16a99.09,99.09,0,0,0-27.2,3.66C89,112.59,61.94,165.7,43.33,248.83c-19,84.91-15.56,152,21.58,164.88,26,9,49.25-9.61,71.27-37,25-31.2,55.79-40.8,119.82-40.8s93.62,9.6,118.66,40.8c22,27.41,46.11,45.79,71.42,37.16C487.1,399.86,486.52,334.74,467.51,248.83Z',
-                style: { fill: 'none', stroke: 'currentColor', strokeMiterlimit: '10', strokeWidth: '32px' }
-            }),
-            HFS.h('circle', { cx: '292', cy: '224', r: '20', fill: 'currentColor' }),
-            HFS.h('path', {
-                d: 'M336,288a20,20,0,1,1,20-19.95A20,20,0,0,1,336,288Z',
-                fill: 'currentColor'
-            }),
-            HFS.h('circle', { cx: '336', cy: '180', r: '20', fill: 'currentColor' }),
-            HFS.h('circle', { cx: '380', cy: '224', r: '20', fill: 'currentColor' }),
-            HFS.h('line', {
-                x1: '160', y1: '176', x2: '160', y2: '272',
-                style: { fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '32px' }
-            }),
-            HFS.h('line', {
-                x1: '208', y1: '224', x2: '112', y2: '224',
-                style: { fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '32px' }
+        function ImgFallback({ fallback, tag = 'img', props }) {
+            const [err, setErr] = HFS.React.useState()
+            return err ? fallback && HFS.h(fallback) : HFS.h(tag, Object.assign(props, {
+                onError() { setErr(true) }
+            }))
+        }
+
+        console.log('[EmulatorJS] entryIcon hook called for', entry.name)
+        const entryPath = entry.uri || entry.url;
+        console.log('[EmulatorJS] entry path:', entryPath)
+
+        if (entry.isFolder || (entry.isFolder == false && compatibleExtensions.includes(entry.ext))) {
+            const srcCover = entryPath + '?get=game_cover';
+            console.log('[EmulatorJS] Checking for custom icon at', srcCover)
+            return HFS.h(ImgFallback, {
+                fallback: () => entry.getDefaultIcon(),
+                props: {
+                    src: srcCover,
+                    className: 'icon thumbnail'
+                }
+
             })
-        )
-
-        const filename = (entry && (entry.name || ''))
-        const compatibleExtensions = Object.keys(SYSTEM_MAP)
-        const ext = (entry && !entry.isFolder && entry.ext) ? entry.ext.toLowerCase() : (filename.includes('.') ? filename.split('.').pop().toLowerCase() : '')
-        if (!entry.isFolder) {
-            try {
-
-                // check if extension is compatible with emulators
-                if (!compatibleExtensions.includes(ext)) {
-                    return undefined
-                }
-
-                // Caminho completo do arquivo ROM
-                const romPath = entry.url || entry.path || entry.name
-
-                // Componente React que carrega a capa de forma assíncrona
-                const CoverIcon = () => {
-                    const cacheKey = filename
-
-                    // Hook para carregar a capa
-                    const [cover, setCover] = HFS.React.useState(coverCache[cacheKey] || null)
-                    const [consoleIcon, setConsoleIcon] = HFS.React.useState(null)
-                    const [loading, setLoading] = HFS.React.useState(!coverCache[cacheKey])
-
-                    HFS.React.useEffect(() => {
-                        if (coverCache[cacheKey]) {
-                            setCover(coverCache[cacheKey])
-                            setLoading(false)
-                            return
-                        }
-
-                        setLoading(true)
-                        HFS.customRestCall('getCover', { rom: filename, romPath })
-                            .then(result => {
-                                console.log(`[EmulatorJS] Cover carregada para ${filename}:`, { success: result.success, hasData: !!result.data })
-                                if (result.success && result.data) {
-                                    const coverData = {
-                                        src: `data:${result.mimeType || 'image/jpeg'};base64,${result.data}`,
-                                        mimeType: result.mimeType
-                                    }
-                                    coverCache[cacheKey] = coverData
-                                    setCover(coverData)
-                                }
-                                setLoading(false)
-                            })
-                            .catch(err => {
-                                console.error(`[EmulatorJS] Erro ao carregar capa para ${filename}:`, err)
-                                setLoading(false)
-                            })
-                    }, [])
-
-                    // Carregar ícone do console quando a capa não está disponível
-                    HFS.React.useEffect(() => {
-                        if (cover) return // Não precisa do ícone do console se houver capa
-
-                        const loadConsoleIcon = async () => {
-                            try {
-
-                                const allSystems = getAllSystemsFromFile(ext || filename)
-
-                                // Determinar qual console usar
-                                let consoleToUse = null
-                                let iconFileName = null
-
-                                // 1. Primeiro, tentar buscar ícone customizado da pasta
-                                console.log(`[EmulatorJS] Trying to get folder icon for ${filename}`)
-                                console.log(`[EmulatorJS] entry.url: ${entry.url}`)
-                                console.log(`[EmulatorJS] entry.uri: ${entry.uri}`)
-
-                                let parentPath = null
-                                if (entry.url) {
-                                    parentPath = entry.url.substring(0, entry.url.lastIndexOf('/'))
-                                } else if (entry.uri) {
-                                    parentPath = entry.uri.substring(0, entry.uri.lastIndexOf('/'))
-                                }
-
-                                console.log(`[EmulatorJS] Extracted parentPath: ${parentPath}`)
-
-                                if (parentPath) {
-                                    try {
-                                        const folderIconResult = await HFS.customRestCall('getFolderIcon', {
-                                            folderPath: parentPath
-                                        })
-                                        console.log(`[EmulatorJS] getFolderIcon result:`, folderIconResult)
-                                        if (folderIconResult.success && folderIconResult.iconName) {
-                                            iconFileName = getPlatformIconUrl(folderIconResult.iconName, true)
-                                            console.log(`[EmulatorJS] Found folder icon: ${iconFileName}`)
-                                        }
-                                    } catch (folderErr) {
-                                        console.error(`[EmulatorJS] Error calling getFolderIcon:`, folderErr)
-                                    }
-                                }
-
-                                // 2. Se não achou ícone da pasta, tentar usar ícone do console (se há apenas 1)
-                                if (!iconFileName && allSystems.length === 1) {
-                                    consoleToUse = allSystems[0].system
-                                    // Mapear system para icon filename usando getPlatformIcon
-                                    iconFileName = getPlatformIconUrl(consoleToUse)
-                                }
-
-                                // 3. Se conseguiu determinar um ícone, carregar sua imagem
-                                if (iconFileName) {
-                                    setConsoleIcon({
-                                        src: iconFileName,
-                                        alt: consoleToUse || 'Console Icon'
-                                    })
-
-                                }
-                            } catch (err) {
-                                console.error(`[EmulatorJS] Error loading console icon for ${filename}:`, err)
-                            }
-                        }
-
-                        loadConsoleIcon()
-                    }, [cover])
-
-                    // Estilos do container
-                    const containerStyle = {
-                        width: '80px',
-                        minHeight: '100px',
-                        borderRadius: '2px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'transparent',
-                        overflow: 'hidden',
-                        margin: '0 auto'
-                    }
-
-                    // Se a capa carregou com sucesso, mostrar
-                    if (cover) {
-                        return HFS.h('div', {
-                            className: 'emulatorjs-icon-container',
-                            style: containerStyle
-                        },
-                            HFS.h('img', {
-                                src: cover.src,
-                                style: {
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    borderRadius: '2px'
-                                },
-                                alt: filename
-                            })
-                        )
-                    }
-
-                    // Se conseguiu carregar o ícone do console, mostrar
-                    if (consoleIcon) {
-                        return HFS.h('div', {
-                            className: 'emulatorjs-icon-container',
-                            style: containerStyle
-                        },
-                            HFS.h('img', {
-                                src: consoleIcon.src,
-                                style: {
-                                    width: '80%',
-                                    height: '80%',
-                                    objectFit: 'contain',
-                                    borderRadius: '2px',
-                                    filter: 'invert(0.8)'
-                                },
-                                alt: consoleIcon.alt
-                            })
-                        )
-                    }
-
-
-                    if (compatibleExtensions.includes(ext)) {
-                        return HFS.h('div', {
-                            className: 'emulatorjs-icon-container',
-                            style: containerStyle
-                        }, gameControllerIcon)
-                    }
-                    else {
-                        // devolve padrao
-                        return undefined
-                    }
-                }
-                return HFS.h(CoverIcon)
-            } catch (err) {
-                console.error('[EmulatorJS] erro no handler entryIcon', err)
-                return undefined
-            }
         } else {
-
-            try {
-
-
-
-                // Tentar buscar ícone customizado
-                const result = await HFS.customRestCall('getFolderIcon', {
-                    folderPath: entry.uri || entry.url
-                })
-
-                if (result.success && result.dataUrl) {
-                    console.log('[EmulatorJS] Applying custom icon to folder:', entry.name, result.iconName)
-
-                    // Estilos do container (igual ao das capas)
-                    const containerStyle = {
-                        width: '80px',
-                        minHeight: '100px',
-                        borderRadius: '2px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'transparent',
-                        overflow: 'hidden',
-                        margin: '0 auto'
-                    }
-
-                    return HFS.h('div', {
-                        className: 'emulatorjs-icon-container',
-                        style: containerStyle
-                    }, HFS.h('img', {
-                        src: result.dataUrl,
-                        alt: 'Console Icon',
-                        style: {
-                            width: '100%',
-                        }
-                    }))
-
-
-                }
-            } catch (err) {
-                console.error('[EmulatorJS] Error applying custom icon:', err)
-                return undefined
-            }
+            console.log('[EmulatorJS] entry is not a folder or compatible ROM, skipping custom icon')
         }
     })
 
