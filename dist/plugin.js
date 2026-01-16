@@ -7,7 +7,7 @@
 // Allows opening ROMs in JavaScript emulators directly in the browser
 
 exports.description = "Plugin that integrates EmulatorJS to emulate classic console games directly in the browser"
-exports.version = 1.3;
+exports.version = 1.4;
 exports.apiRequired = 12.9;
 
 
@@ -761,6 +761,10 @@ exports.init = function (api) {
                         if (fs.existsSync(p)) {
                             api.log(`Found cover at: ${p}`)
                             iconPath = p;
+                            ctx.set('Is-Cover', true);
+                            ctx.set('Is-Icon', false);
+
+
                             break;
                         }
                     }
@@ -795,6 +799,7 @@ exports.init = function (api) {
                                         api.log(`Folder path "${folderPath}" matches mapping folder "${folderMapped}"`)
                                         if (!mappedIcon || folderMapped.length > (mappedIcon.folder || '').length) {
                                             mappedIcon = { icon: mappings[sm], folder: folderMapped };
+
                                         }
                                     }
                                 });
@@ -810,9 +815,17 @@ exports.init = function (api) {
                                     if (isFile && fs.existsSync(mappedIconContentPath)) {
                                         api.log(`Mapped content icon exists: ${mappedIconContentPath}`)
                                         iconPath = mappedIconContentPath;
+                                        ctx.set('Is-Icon', true);
+                                        ctx.set('Is-Cover', false);
+                                        ctx.set('Is-Mapped-Icon', true);
+
                                     } else if (fs.existsSync(mappedIconPath)) {
                                         api.log(`Mapped icon exists: ${mappedIconPath}`)
                                         iconPath = mappedIconPath;
+                                        ctx.set('Is-Icon', true);
+                                        ctx.set('Is-Cover', false);
+                                        ctx.set('Is-Mapped-Icon', true);
+
                                     } else {
                                         api.log(`Mapped icon does not exist on disk: ${mappedIconPath}`)
                                     }
@@ -827,7 +840,7 @@ exports.init = function (api) {
 
                     // 2.2 Auto-detecção usando system_map.js
                     if (!iconPath) {
-                        debugger;
+
                         api.log(`No mapped icon found. Using detectBestIcon() for: ${isFile ? fileName : folderPath}`)
 
                         const searchText = isFile ? fileName : folderPath;
@@ -840,6 +853,10 @@ exports.init = function (api) {
                             if (fs.existsSync(detectedIconPath)) {
                                 api.log(`Using detected icon: ${detectedIconPath}`);
                                 iconPath = detectedIconPath;
+                                ctx.set('Is-Icon', true);
+                                ctx.set('Is-Cover', false);
+                                ctx.set('Is-Mapped-Icon', false);
+
                             } else {
                                 api.log(`Detected icon not found on disk: ${detectedIconPath}`);
                             }
@@ -853,12 +870,7 @@ exports.init = function (api) {
                 ctx.set('fileName', fileName);
                 ctx.set('folderPath', folderPath);
 
-                // if HFS is light mode (light theme) and  icon theme is monochrome. invert the icon
-                const isLightMode = ctx.cookies.get('hfs-theme') === 'light';
-                if (iconTheme === 'monochrome' && isLightMode) {
-                    api.log(`Light mode detected with monochrome icons, trying to use inverted icon version.`);
-                    /// proccess iconPath to find inverted version
-                }
+
 
                 api.log(`Final result: ${iconPath ? 'Found - ' + iconPath : 'Not found'}`);
 
@@ -916,6 +928,8 @@ exports.init = function (api) {
                 },
                 frontend: true
             },
+
+
 
             igdbClientId: {
                 type: 'string',

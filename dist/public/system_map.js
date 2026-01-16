@@ -181,15 +181,16 @@ function possiblePlatforms(text) {
 
             tryParts.forEach(part => {
 
-                [systemEntry.manufacturer, systemEntry.name, systemEntry.system, ...systemEntry.core, ...systemEntry.extensions, ...systemEntry.icons].forEach(sp => {
+                [systemEntry.manufacturer, systemEntry.name, systemEntry.system, ...systemEntry.core, ...systemEntry.extensions].forEach(sp => {
                     systemPart = (sp || '').toLowerCase().split('_').join(' ').split('/').join(' ');
                     if (systemPart.length > 0) {
 
-                        if (systemPart.toLowerCase().includes(part)) {
+
+                        if (part.length > 3 && systemPart.toLowerCase().includes(part)) {
                             console.log(`Matched part "${part}" with system part "${systemPart}" for system "${systemEntry.system}"`);
                             addSystemMatch(systemEntry);
                         }
-                        if (systemPart.toLowerCase() === part) {
+                        if (systemPart.toLowerCase() === part.toLowerCase()) {
                             console.log(`Exact match for part "${part}" with system part "${systemPart}" for system "${systemEntry.system}"`);
                             addSystemMatch(systemEntry);
                         }
@@ -205,6 +206,7 @@ function possiblePlatforms(text) {
     const detectedArray = Object.values(detectedSystems);
     detectedArray.sort((a, b) => b[1] - a[1]);
     const finalArray = detectedArray
+        .filter(entry => entry[1] > 1)
         .map(entry => entry[0]);
     console.log('Detected platforms:', finalArray);
     return finalArray;
@@ -272,6 +274,7 @@ function detectIcons(text, theme, mainIcons) {
 
 
         platform.icons.forEach(function (iconName) {
+
 
             if (platform.icons.length > 1) {
 
@@ -347,7 +350,7 @@ if (typeof module !== 'undefined' && module.exports) {
     console.log('[system_map.js] compatibleExtensions isArray:', Array.isArray(compatibleExtensions));
     console.log('[system_map.js] compatibleExtensions length:', compatibleExtensions ? compatibleExtensions.length : 'undefined');
 
-    // Export detectIcons também como detectIcon para compatibilidade
+
     module.exports = {
         SYSTEM_MAP,
         compatibleExtensions,
