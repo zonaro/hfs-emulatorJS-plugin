@@ -9,36 +9,12 @@
     console.log('[EmulatorJS] HFS.getPluginConfig() returned:', config);
 
     const emuVersion = config.emulatorsJsVersion || 'stable'
+    const iconTheme = config.iconTheme || 'monochrome';
+
     console.log('[EmulatorJS] HFS.getPluginPublic() returned:', pluginPublic);
     console.log('[EmulatorJS] Using EmulatorJS version:', emuVersion);
 
 
-    // Function to get all systems that can run a file with a given extension
-    // Returns an array of systems
-    function getAllSystemsFromFile(filename) {
-        const ext = filename.split('.').pop().toLowerCase()
-        return SYSTEM_MAP[ext] || []
-    }
-
-    // Function to clean filename
-    function cleanFilename(filename) {
-        // Remove extension
-        let cleaned = filename.substring(0, filename.lastIndexOf('.')) || filename
-        // Remove content in parentheses
-        cleaned = cleaned.replace(/\s*\([^)]*\)\s*/g, ' ')
-        // Remove content in square brackets
-        cleaned = cleaned.replace(/\s*\[[^\]]*\]\s*/g, ' ')
-        // Clean up multiple spaces and trim
-        cleaned = cleaned.replace(/\s+/g, ' ').trim()
-
-        //remove numbers on beggining of file names before -, names like "1234 - Game Title" becomes  "Game Title"
-        cleaned = cleaned.replace(/^\d+\s*-\s*/, '').trim()
-
-        // Remove numbering like "Part 1", "Disc 2", "Episode 3"
-        cleaned = cleaned.replace(/\s+(Part|Disc|Episode|CD|Vol|Volume)\s*\d+$/i, '').trim()
-
-        return cleaned
-    }
 
     // Function to search covers from IGDB
     async function openCoverSearchModal(entry) {
@@ -314,40 +290,8 @@
         }, 100)
     }
 
-    function getPlatformIconUrl(platform, isName) {
-        var icon = getPlatformIcon(platform);
-        if (isName) {
-            /// If platform is actually the name of the icon, use it directly
-            icon = platform
-        }
-        if (icon) {
-            console.log('[EmulatorJS] Getting icon for platform:', platform, '->', icon);
-            if (HFS) {
-                // Return full URL to the icon in plugin public directory
-                return pluginPublic + 'console-icons/' + icon;
-            }
-        }
-        return null;
-    }
 
-    function getPlatformIcon(platform) {
-        // Returns the icon filename in the format 'SHORT - Manufacturer - Platform.png' or null if unknown
-        if (!platform) return null
-        const key = platform.toString().toLowerCase()
 
-        // First search SYSTEM_MAP for an entry matching the system and with an icon defined
-        for (const ext in SYSTEM_MAP) {
-            const arr = SYSTEM_MAP[ext]
-            if (!Array.isArray(arr)) continue
-            for (const obj of arr) {
-                if (String(obj.system).toLowerCase() === key && obj.icon) {
-                    return obj.icon
-                }
-            }
-        }
-
-        return null;
-    }
 
     function playGameInEmulator(gameUrl, core) {
         console.log('[EmulatorJS] playGameInEmulator called with:', gameUrl, core)
@@ -828,6 +772,7 @@
 
     HFS.onEvent('fileMenu', ({ entry, menu, props }) => {
 
+
         const filename = entry.name
         // Prefer entry.ext when available
         const ext = (entry && entry.ext) ? entry.ext.toLowerCase() : (filename.includes('.') ? filename.split('.').pop().toLowerCase() : '')
@@ -932,12 +877,18 @@
 
             menu.unshift({ id: 'separator-emulatorjs-1', type: 'separator' })
 
+
+
+            const entryPath = entry.uri || entry.url;
+            const srcCover = entryPath + '?get=game_cover&t=' + Date.now();
+
+
             // Add 'View Cover' option 
             const viewCoverItem = {
                 id: 'view-cover',
                 label: 'View Cover',
                 subLabel: 'Preview cover image',
-                icon: 'image',
+                icon: srcCover,
 
                 onClick: async () => {
                     console.log('[EmulatorJS] View cover button clicked!')
@@ -945,8 +896,7 @@
                     try {
 
                         const { dialogLib } = HFS
-                        const entryPath = entry.uri || entry.url;
-                        const srcCover = entryPath + '?get=game_cover&t=' + Date.now();
+
                         // Create modal to show image
                         let dialog = dialogLib.newDialog({
                             title: 'Cover Preview',
@@ -1077,13 +1027,14 @@
 
                 // add a separator for this system group
                 menu.unshift({ id: `separator-emulatorjs-play-${sysIndex}`, type: 'separator' })
-
                 cores.forEach(coreId => {
+
+                    const platIcon = detectBestIcon(systemInfo.system, iconTheme);
                     const playItem = {
                         id: `play-${systemInfo.system}-${coreId}`,
                         label: 'Play',
                         subLabel: `${systemInfo.name} · ${coreId}`,
-                        icon: getPlatformIconUrl(systemInfo.system) || '🕹️',
+                        icon: platIcon ? `${pluginPublic}${platIcon.path}` : '🕹️',
                         onClick: () => {
                             console.log(`[EmulatorJS] Play button clicked for ${systemInfo.name} (core=${coreId})!`)
                             console.log('[EmulatorJS] - entry.uri:', entry.uri)
@@ -1111,68 +1062,16 @@
 
     console.log('[EmulatorJS] Plugin loaded successfully')
 
-    // Cache para capas já carregadas
-    const coverCache = {}
-
-
-    // Função para verificar se uma pasta contém arquivos compatíveis com emuladores
-    async function folderHasCompatibleRoms(folderUri) {
-        try {
-            console.log('[EmulatorJS] Checking folder for compatible ROMs:', folderUri)
-
-            // Fazer requisição para listar os arquivos da pasta em plain text
-            const response = await fetch(folderUri + '?get=list&folders=0')
-            if (!response.ok) {
-                console.log('[EmulatorJS] Failed to fetch folder contents')
-                return false
-            }
-
-            const text = await response.text()
-            const fileExtensions = Object.keys(SYSTEM_MAP)
-
-            // Processar cada linha (arquivo)
-            const lines = text.split('\n')
-            for (const line of lines) {
-                const filename = line.trim()
-                if (!filename) continue
-
-                // Extrair extensão do arquivo
-                const ext = filename.includes('.') ? filename.split('.').pop().toLowerCase() : ''
-
-                if (fileExtensions.includes(ext)) {
-                    console.log('[EmulatorJS] Found compatible ROM:', filename)
-                    return true
-                }
-            }
-
-            console.log('[EmulatorJS] No compatible ROMs found in folder')
-            return false
-        } catch (err) {
-            console.error('[EmulatorJS] Error checking folder contents:', err)
-            return false
-        }
-    }
-
     // Função para detectar quais consoles estão presentes na pasta
     async function detectFolderConsoles(folderUri) {
         try {
             console.log('[EmulatorJS] Detecting consoles in folder:', folderUri)
 
-            const folderName = decodeURIComponent(folderUri.split('/').filter(part => part).pop() || '').toLowerCase()
-
-            console.log('[EmulatorJS] Folder name for detection:', folderName)
-
             const detectedConsoles = new Set()
 
-            // check for folder name 
-            Object.values(SYSTEM_MAP).forEach(systemInfos => {
-                systemInfos.forEach(systemInfo => {
-                    if (systemInfo) {
-                        if (folderName.includes(systemInfo.name.toLowerCase()) || folderName.includes(systemInfo.system.toLowerCase())) {
-                            detectedConsoles.add(systemInfo.name)
-                        }
-                    }
-                })
+            possiblePlatforms(folderUri).forEach(systemInfo => {
+
+                detectedConsoles.add(systemInfo.name)
             })
 
             const response = await fetch(folderUri + '?get=list&folders=0')
@@ -1209,9 +1108,11 @@
 
             const { dialogLib } = HFS
 
-            // Buscar ícones disponíveis
-            const result = await HFS.customRestCall('getAvailableIcons')
-            if (!result.success || !result.icons || result.icons.length === 0) {
+
+            let icons = getAllIcons(iconTheme, false); // ommit content icons
+
+
+            if (icons.length === 0) {
                 HFS.toast('No console icons available', 'error')
                 return
             }
@@ -1224,7 +1125,6 @@
             initialSearchValue = detectedConsoles.join("/") + '/' + folderEntry.name
 
 
-            const icons = result.icons
             let dialog = null
             let searchInput = null
 
@@ -1270,7 +1170,7 @@
                 icons.forEach(icon => {
                     // Filtrar por termo de busca, levando em conta varios consoles separados por /
                     const searchTerms = searchLower.split("/").map(term => term.trim()).filter(term => term.length > 0)
-                    if (!searchTerms.some(term => icon.displayName.toLowerCase().includes(term) || icon.filename.toLowerCase().includes(term))) {
+                    if (!searchTerms.some(term => icon.name.toLowerCase().includes(term) || icon.platform.toLowerCase().includes(term) || icon.system.toLowerCase().includes(term) || icon.manufacturer.toLowerCase().includes(term))) {
                         return
                     }
 
@@ -1285,31 +1185,38 @@
                     iconDiv.style.transition = 'all 0.2s'
 
                     const img = document.createElement('img')
-                    img.src = icon.dataUrl
-                    img.alt = icon.displayName
+                    img.src = `${pluginPublic}${icon.path}`
+                    img.alt = icon.name
                     img.style.width = '64px'
                     img.style.height = '64px'
                     img.style.objectFit = 'contain'
-                    img.style.filter = 'invert(0.8)'
                     img.style.marginBottom = '8px'
 
                     const label = document.createElement('div')
-                    label.textContent = icon.displayName
+                    label.textContent = icon.platform
                     label.style.fontSize = '11px'
                     label.style.textAlign = 'center'
                     label.style.wordWrap = 'break-word'
                     label.style.maxWidth = '100px'
 
+                    const subLabel = document.createElement('div')
+                    subLabel.textContent = icon.manufacturer
+                    subLabel.style.fontSize = '9px'
+                    subLabel.style.textAlign = 'center'
+                    subLabel.style.wordWrap = 'break-word'
+                    subLabel.style.maxWidth = '100px'
+
                     iconDiv.appendChild(img)
                     iconDiv.appendChild(label)
+                    iconDiv.appendChild(subLabel)
 
                     iconDiv.addEventListener('click', async () => {
                         try {
-                            console.log('[EmulatorJS] Setting icon:', icon.filename)
+                            console.log('[EmulatorJS] Setting icon:', icon.name)
 
                             const setResult = await HFS.customRestCall('setFolderIcon', {
                                 folderPath: folderEntry.uri || folderEntry.url,
-                                iconName: icon.filename
+                                iconName: icon.name
                             })
 
                             if (setResult.success) {
@@ -1399,7 +1306,7 @@
             if (!entry.isFolder) return
 
             // Verificar se a pasta tem arquivos compatíveis
-            const hasRoms = await folderHasCompatibleRoms(entry.uri || entry.url)
+            const hasRoms = await detectFolderConsoles(entry.uri || entry.url)
             if (!hasRoms) return
 
             // Verificar se o usuário é admin
@@ -1470,7 +1377,7 @@
 
         console.log('[EmulatorJS] entryIcon hook called for', entry.name)
         const entryPath = entry.uri || entry.url;
-        const srcCover = entryPath + '?get=game_cover&t=' + Date.now();
+        const srcCover = entryPath + `?get=game_cover&t=` + Date.now();
         console.log('[EmulatorJS] entry path:', entryPath)
 
         if (entry.isFolder || (entry.isFolder == false && compatibleExtensions.includes(entry.ext))) {
@@ -1485,6 +1392,7 @@
             })
         } else {
             console.log('[EmulatorJS] entry is not a folder or compatible ROM, skipping custom icon')
+            return null // Retorna null explicitamente para que o HFS use o ícone padrão
         }
     })
 

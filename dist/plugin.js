@@ -15,9 +15,6 @@ exports.apiRequired = 12.9;
 let igdbToken = null
 let tokenExpiry = null
 
-// an cache for system detection results {expires,icon}
-let systemDetectorCache = {};
-
 exports.init = function (api) {
 
     const fs = require('fs');
@@ -26,75 +23,48 @@ exports.init = function (api) {
     const path = require('path');
 
     const publicDir = path.join(__dirname, 'public')
-    const iconsDir = path.join(publicDir, 'console-icons')
 
+    // Configured storage directory
     const configuredBase = api.storageDir;
+    // cover directory
     const coversDir = path.join(configuredBase, 'covers')
+    // game info cache directory
     const gameInfoDir = path.join(configuredBase, 'gameinfo')
+
+    // icons directory (in public, so frontend can access too)
+    const iconsDir = path.join(publicDir, 'icons', (api.getConfig('iconTheme') || 'monochrome'))
     const systemMapPath = path.join(publicDir, 'system_map.js');
     const mappingFile = path.join(configuredBase, 'icon-mappings.json')
 
 
 
-
-    function fetchText(url, timeoutMs = 5000, headers = {}, allowInsecure = true) {
-        return new Promise((resolve, reject) => {
-            try {
-                const urlObj = new URL(url)
-                const client = urlObj.protocol === 'https:' ? https : http
-
-                const options = {
-                    protocol: urlObj.protocol,
-                    hostname: urlObj.hostname,
-                    port: urlObj.port,
-                    path: urlObj.pathname + urlObj.search,
-                    headers
-                }
-
-                // allow self-signed certs for local/self requests when needed
-                if (allowInsecure && urlObj.protocol === 'https:') {
-                    options.rejectUnauthorized = false
-                }
-
-                const req = client.get(options, (res) => {
-                    let data = ''
-                    res.on('data', chunk => data += chunk)
-                    res.on('end', () => {
-                        const ok = res.statusCode && res.statusCode >= 200 && res.statusCode < 300
-                        if (ok) {
-                            resolve(data)
-                        } else {
-                            reject(new Error(`status ${res.statusCode}`))
-                        }
-                    })
-                })
-
-                req.setTimeout(timeoutMs, () => {
-                    req.destroy(new Error('timeout'))
-                })
-
-                req.on('error', reject)
-            } catch (err) {
-                reject(err)
-            }
-        })
-    }
-
     // get system_map.js and include it
 
-    if (fs.existsSync(systemMapPath)) {
-        api.log('Loaded: system_map.js');
-    } else {
+    if (!fs.existsSync(systemMapPath)) {
         api.setError('EmulatorJS plugin: system_map.js not found in public directory.');
+        return;
     }
 
-    const { SYSTEM_MAP, compatibleExtensions } = require(systemMapPath);
+    // Limpar cache do módulo para garantir que carrega a versão mais recente
+    delete require.cache[require.resolve(systemMapPath)];
+
+    api.log('Loading system_map.js from: ' + systemMapPath);
+    const systemMapModule = require(systemMapPath);
+    api.log('Module loaded. Keys: ' + Object.keys(systemMapModule).join(', '));
+
+    const { SYSTEM_MAP, compatibleExtensions, detectBestIcon, detectIcon, tryDetectPlatform, possiblePlatforms, cleanFilename } = systemMapModule;
+
+    api.log('compatibleExtensions type: ' + typeof compatibleExtensions);
+    api.log('compatibleExtensions is Array: ' + Array.isArray(compatibleExtensions));
+    if (Array.isArray(compatibleExtensions)) {
+        api.log('compatibleExtensions length: ' + compatibleExtensions.length);
+    }
 
 
-    ensureDir(fs, path, configuredBase);
-    ensureDir(fs, path, gameInfoDir);
-    ensureDir(fs, path, coversDir);
-
+    ensureDir(fs, configuredBase);
+    ensureDir(fs, gameInfoDir);
+    ensureDir(fs, coversDir);
+    ensureDir(fs, iconsDir);
 
     // Checks existence of public assets
     if (!fs.existsSync(path.join(publicDir, 'emulator.js')) || !fs.existsSync(path.join(publicDir, 'emulator.css'))) {
@@ -112,7 +82,7 @@ exports.init = function (api) {
     }
 
     // Utility: ensure directory exists recursively
-    function ensureDir(fs, path, dir) {
+    function ensureDir(fs, dir) {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     }
 
@@ -524,7 +494,7 @@ exports.init = function (api) {
                 const coverPath = path.join(coversDir, romName + '.png')
 
                 // Ensure covers directory exists
-                ensureDir(fs, path, coversDir);
+                ensureDir(fs, coversDir);
 
                 api.log(`[setCover] Saving cover for ROM: ${romName}`)
                 api.log(`[setCover] Target path: ${coverPath}`)
@@ -600,6 +570,7 @@ exports.init = function (api) {
                 fs.writeFileSync(mappingFile, JSON.stringify(mappings, null, 2), 'utf8')
 
                 api.log(`[setFolderIcon] Icon mapping saved successfully`)
+
                 return { success: true, message: 'Folder icon set successfully' }
             } catch (err) {
                 api.log(`[setFolderIcon] Error: ${err.message}`)
@@ -609,43 +580,6 @@ exports.init = function (api) {
 
 
 
-        async getAvailableIcons() {
-            try {
-                api.log(`[getAvailableIcons] Listing available console icons`)
-
-                if (!fs.existsSync(iconsDir)) {
-                    return { success: false, error: 'Icons directory not found' }
-                }
-
-                const files = fs.readdirSync(iconsDir)
-                const iconFiles = files.filter(f => f.endsWith('.png'))
-
-                const icons = iconFiles.map(filename => {
-                    const iconPath = path.join(iconsDir, filename)
-                    let imageData = null
-
-                    try {
-                        const buffer = fs.readFileSync(iconPath)
-                        imageData = buffer.toString('base64')
-                    } catch (err) {
-                        api.log(`[getAvailableIcons] Error reading icon file ${filename}: ${err.message}`)
-                    }
-
-                    return {
-                        filename,
-                        // Remove o prefixo curto (ex: 'NES - ') e então remove o fabricante (ex: 'Nintendo - ')
-                        displayName: filename.replace('.png', '').replace(/_/g, ' ').replace(/^[^-]+ - /, '').replace(/^(Nintendo|Sony|Sega|Atari|FBNeo|Microsoft|SNK|Bandai|Commodore|NEC|Panasonic) - /, ''),
-                        dataUrl: imageData ? `data:image/png;base64,${imageData}` : null
-                    }
-                })
-
-                api.log(`[getAvailableIcons] Found ${icons.length} icons`)
-                return { success: true, icons }
-            } catch (err) {
-                api.log(`[getAvailableIcons] Error: ${err.message}`)
-                return { success: false, error: err.message }
-            }
-        },
 
 
         async removeFolderIcon({ folderPath }) {
@@ -689,6 +623,42 @@ exports.init = function (api) {
                 api.log(`[removeFolderIcon] Error: ${err.message}`)
                 return { success: false, error: err.message }
             }
+        },
+
+        async setFolderIcon({ folderPath, iconName }) {
+            try {
+                if (!folderPath || !iconName) {
+                    return { success: false, error: 'Missing folderPath or iconName parameter' }
+                }
+
+                api.log(`[setFolderIcon] Setting icon "${iconName}" for folder: ${folderPath}`)
+
+
+
+                // Normalizar path da pasta
+                const normalizedPath = fixGameName(folderPath.replace(/^\/+|\/+$/g, ''))
+
+                // Carregar mappings existentes
+                let mappings = {}
+                if (fs.existsSync(mappingFile)) {
+                    try {
+                        const data = fs.readFileSync(mappingFile, 'utf8')
+                        mappings = JSON.parse(data)
+                    } catch (err) {
+                        api.log(`[setFolderIcon] Error reading mappings: ${err.message}`)
+                    }
+                }
+
+                // Adicionar/atualizar mapping
+                mappings[normalizedPath] = iconName
+                fs.writeFileSync(mappingFile, JSON.stringify(mappings, null, 2), 'utf8')
+
+                api.log(`[setFolderIcon] Icon set successfully for folder: ${folderPath}`)
+                return { success: true, message: 'Folder icon set successfully' }
+            } catch (err) {
+                api.log(`[setFolderIcon] Error: ${err.message}`)
+                return { success: false, error: err.message }
+            }
         }
     }
 
@@ -697,73 +667,83 @@ exports.init = function (api) {
         frontend_js: ['system_map.js', 'emulator.js'],
         frontend_css: 'emulator.css',
         middleware(ctx) {
-
-            const allowedGets = ['game_cover', 'game_icon']
+            const allowedGets = ['game_cover']
             const typeGet = ctx.query.get;
-            if (!allowedGets.includes(typeGet)) return ctx.
+            if (!allowedGets.includes(typeGet)) return;
 
-                ctx.state.considerAsGui = true
+            ctx.state.considerAsGui = true
             ctx.state.download_counter_ignore = true
+
             function error(code, body) {
                 ctx.status = code
                 ctx.type = 'text'
                 ctx.body = body
             }
-            return async () => {
 
-                api.log("======== NEW REQUEST ========")
-                let filePath = ctx.path;
+            api.log("======== NEW REQUEST ========")
+            let filePath = ctx.path;
 
-                let isFile = null;
-                let extension = null;
-                let folderPath = null;
-                let fileName = null
-                let iconPath = null;
-                let mappings = null
-                let systemEntries = null;
-                let mappedIcon = null;
+            let isFile = null;
+            let extension = null;
+            let folderPath = null;
+            let fileName = null
+            let iconPath = null;
+            let mappings = null;
+            let mappedIcon = null;
 
-                // check if ctx.path is a file or folder
-                if (filePath == null || filePath.length == 0) {
-                    filePath = null;
-                    fileName = null;
-                    extension = null;
-                    isFile = null
-                    api.log('No fileName provided in request path.');
+            // check if ctx.path is a file or folder
+            if (filePath == null || filePath.length == 0) {
+                filePath = null;
+                fileName = null;
+                extension = null;
+                isFile = null
+                api.log('No fileName provided in request path.');
+            } else {
+                // Apply fixGameName first to normalize the path
+                filePath = fixGameName(filePath);
+
+                // Then extract extension from normalized path
+                extension = path.extname(filePath).toLowerCase().slice(1).trim();
+                isFile = extension.length > 0;
+                fileName = path.basename(filePath);
+
+                if (isFile) {
+                    folderPath = path.dirname(filePath);
                 } else {
-                    extension = path.extname(filePath).toLowerCase().slice(1).trim();
-                    isFile = extension.length > 0;
-                    fileName = path.basename(filePath);
-                    if (isFile) {
-                        folderPath = path.dirname(filePath);
-                    } else {
-                        folderPath = filePath;
-                    }
-
-                    filePath = fixGameName(filePath);
-                    folderPath = fixGameName(folderPath);
-                    fileName = fixGameName(fileName);
-
-                    api.log(`Request path: ${filePath}, isFile: ${isFile}`);
-                    api.log(`Derived folderPath: ${folderPath}`);
-                    api.log(`Derived fileName: ${fileName}`);
-                    api.log(`Derived extension: ${extension}`);
+                    folderPath = filePath;
                 }
 
+                folderPath = fixGameName(folderPath);
+                fileName = fixGameName(fileName);
 
-                if (isFile == null) {
-                    api.log('Unable to determine if path is file or folder: ' + filePath);
-                    return error(400, 'Bad Request: Unable to determine if path is file or folder');
-                }
+                api.log(`Request path: ${filePath}, isFile: ${isFile}`);
+                api.log(`Derived folderPath: ${folderPath}`);
+                api.log(`Derived fileName: ${fileName}`);
+                api.log(`Derived extension: ${extension}`);
+
+            }
 
 
-                let isCover = typeGet === 'game_cover'
+            if (isFile == null) {
+                api.log('Unable to determine if path is file or folder: ' + filePath);
+                return error(400, 'Bad Request: Unable to determine if path is file or folder');
+            }
 
-                api.log(`Requested ${typeGet} for entry: ${filePath}`)
 
-                if (isCover && extension && compatibleExtensions.includes(extension)) {
 
-                    api.log(`Checking for custom cover for file: ${fileName}`)
+            api.log(`Requested ${typeGet} for entry: ${filePath}`)
+
+            try {
+                // LÓGICA:
+                // - Se for ARQUIVO (isFile=true): sempre busca COVER
+                // - Se for PASTA (isFile=false) OU não houver cover: busca ÍCONE
+
+                api.log(`isFile: ${isFile}, extension: ${extension}`)
+                api.log(`compatibleExtensions available: ${compatibleExtensions ? 'yes' : 'no'}`)
+
+                // 1. Se for arquivo compatível, tentar buscar COVER
+                if (isFile && extension && compatibleExtensions.includes(extension)) {
+                    api.log(`File detected. Searching for cover for: ${fileName}`)
 
                     const coverPathPng = path.join(coversDir, fileName + '.png')
                     const coverPathPng2 = filePath + '.png';
@@ -774,178 +754,140 @@ exports.init = function (api) {
                     const coverPathJpeg = path.join(coversDir, fileName + '.jpeg')
                     const coverPathJpeg2 = filePath + '.jpeg';
 
-                    [coverPathPng2, coverPathJpg2, coverPathJpeg2, coverPathPng, coverPathJpg, coverPathJpeg].forEach(p => {
-                        if (fs.existsSync(p)) {
-                            api.log(`Serving cover from path: ${p}`)
-                            iconPath = p
-                            return;
-                        }
-                    });
+                    const coverPaths = [coverPathPng2, coverPathJpg2, coverPathJpeg2, coverPathPng, coverPathJpg, coverPathJpeg];
 
-                    if (!iconPath) {
-                        api.log(`No custom cover found for file: ${filePath}`)
+                    for (const p of coverPaths) {
+                        api.log(`Checking cover path: ${p}`)
+                        if (fs.existsSync(p)) {
+                            api.log(`Found cover at: ${p}`)
+                            iconPath = p;
+                            break;
+                        }
                     }
 
+                    if (iconPath) {
+                        api.log(`Cover found successfully: ${iconPath}`)
+                    } else {
+                        api.log(`No custom cover found for file: ${fileName}`)
+                    }
                 }
 
+                // 2. Se não houver cover OU for pasta, buscar ÍCONE
                 if (!iconPath) {
+                    api.log(`Searching for icon (no cover found or is folder)`)
+
+                    // 2.1 Tentar mapeamentos personalizados
                     if (fs.existsSync(mappingFile)) {
                         api.log(`Loading icon mappings from file: ${mappingFile}`)
-                        const data = fs.readFileSync(mappingFile, 'utf8')
-                        mappings = JSON.parse(data)
-                        api.log(mappings)
-                        if (mappings) {
-                            let keysArray = Object.keys(mappings);
-                            api.log(`Loaded ${keysArray.length} icon mappings from file.`)
+                        try {
+                            const data = fs.readFileSync(mappingFile, 'utf8')
+                            mappings = JSON.parse(data)
 
-                            keysArray.forEach((sm, index) => {
-                                let folderMapped = fixGameName(sm.replace(/^\/+|\/+$/g, ''));
-                                api.log(`Mapping ${index}: Folder "${folderMapped}" => Icon "${mappings[sm]}"`)
-                                if (folderPath.includes(sm) || folderPath.includes(folderMapped)) {
-                                    api.log(`Folder path "${folderPath}" includes mapping folder "${folderMapped}"`)
-                                    if (mappedIcon == null || mappedIcon.length == 0 || mappedIcon.length < folderMapped.length) {
-                                        mappedIcon = mappings[sm];
-                                    }
+                            if (mappings && Object.keys(mappings).length > 0) {
+                                const keysArray = Object.keys(mappings);
+                                api.log(`Loaded ${keysArray.length} icon mappings from file.`)
 
-                                }
-                            });
+                                keysArray.forEach((sm, index) => {
+                                    const folderMapped = fixGameName(sm.replace(/^\/+|\/+$/g, ''));
+                                    api.log(`Mapping ${index}: Folder "${folderMapped}" => Icon "${mappings[sm]}"`)
 
-                            if (mappedIcon) {
-                                api.log(`Found mapping for folder "${folderPath}": ${mappedIcon}`)
-                                mappedIcon = path.join(iconsDir, mappedIcon);
-                                if (fs.existsSync(mappedIcon)) {
-                                    api.log(`Found mapped icon "${mappedIcon}" for folder: ${folderPath}`)
-                                    iconPath = mappedIcon;
-                                } else {
-                                    api.log(`Mapped icon "${mappedIcon}" does not exist on disk.`)
-                                    mappedIcon = null;
-                                }
-                            } else {
-                                api.log(`No mapping found for folder: "${folderPath}"`)
-                            }
-                        } else {
-                            api.log(`No valid mappings found in file.`)
-
-                        }
-                    }
-                }
-
-                if (!iconPath) {
-                    api.log(`No mapped icon found for folder: ${folderPath}. Proceeding to auto-detect system.`)
-                    const detectedSystems = new Set();
-                    // get folder files and check possible systems
-                    if (extension) {
-                        api.log(`Checking extension for system detection: .${extension}`);
-                        systemEntries = SYSTEM_MAP[extension];
-                        if (systemEntries && systemEntries.length > 0) {
-                            for (const sys of systemEntries) {
-                                detectedSystems.add(sys.system);
-                                api.log(`Detected system "${sys.system}" from extension: .${extension}`);
-                            }
-                        } else {
-                            api.log(`No system entries found for extension: .${extension}`);
-                        }
-                    }
-
-                    if (detectedSystems.size === 0) {
-
-                        if (systemDetectorCache[folderPath]) {
-                            if (!systemDetectorCache[folderPath].expires || systemDetectorCache[folderPath].expires < Date.now()) {
-                                api.log(`Cache expired for folder: ${folderPath}`);
-                                delete systemDetectorCache[folderPath];
-                            }
-                        }
-
-                        if (systemDetectorCache[folderPath] && systemDetectorCache[folderPath].systemEntries) {
-                            api.log(`Using cached system detection for folder: ${folderPath}`);
-                            systemDetectorCache[folderPath].systemEntries.forEach(sys => detectedSystems.add(sys));
-                        } else {
-                            // use an request to get folder files, is folderpath + ?get=list  
-                            api.log(`Scanning folder for system detection: ${folderPath}`);
-
-                            const protocol = ctx.protocol || 'http';
-                            const host = ctx.host || 'localhost';
-                            const urlList = `${protocol}://${host}/${encodeURI(folderPath)}/?get=list&folders=0`;
-                            api.log(`Fetching folder listing from URL: ${urlList}`);
-
-                            const headers = {};
-                            if (ctx.headers && ctx.headers.cookie) headers['Cookie'] = ctx.headers.cookie;
-                            if (ctx.headers && ctx.headers.authorization) headers['Authorization'] = ctx.headers.authorization;
-
-                            try {
-                                const text = await fetchText(urlList, 5000, headers);
-                                const fileList = text.split('\n').map(f => f.trim()).filter(f => f.length > 0);
-                                api.log(`Received ${fileList.length} entries from folder listing.`);
-                                const expiresInMinutes = Date.now() + ((parseInt(api.getConfig('cacheIcons')) || 720) * 60 * 1000)
-                                if (fileList.length === 0) {
-                                    api.log(`Folder listing is empty, skipping system detection for folder: ${folderPath}`);
-                                    systemDetectorCache[folderPath] = { expires: expiresInMinutes, systemEntries: [] };
-                                    api.log(`Cache will expire at: ${new Date(systemDetectorCache[folderPath].expires).toLocaleString()}`);
-
-                                } else {
-                                    fileList.forEach(fileEntry => {
-                                        const fileExt = path.extname(fileEntry).toLowerCase().slice(1).trim();
-                                        const systemEntries = SYSTEM_MAP[fileExt];
-                                        if (systemEntries && systemEntries.length > 0) {
-                                            systemDetectorCache[folderPath] = systemDetectorCache[folderPath] || {}
-                                            systemDetectorCache[folderPath].systemEntries = systemDetectorCache[folderPath].systemEntries || [];
-                                            systemDetectorCache[folderPath].expires =
-                                                systemEntries.forEach(sys => {
-                                                    detectedSystems.add(sys.system);
-                                                    api.log(`Detected system "${sys.system}" from file: ${fileEntry}`);
-                                                    systemDetectorCache[folderPath].systemEntries.push(sys.system);
-                                                    systemDetectorCache[folderPath].expires = expiresInMinutes;
-                                                    api.log(`Caching detected system "${sys.system}" for folder: ${folderPath}`);
-                                                    api.log(`Cache will expire at: ${new Date(systemDetectorCache[folderPath].expires).toLocaleString()}`);
-                                                });
+                                    if (folderPath.includes(sm) || folderPath.includes(folderMapped)) {
+                                        api.log(`Folder path "${folderPath}" matches mapping folder "${folderMapped}"`)
+                                        if (!mappedIcon || folderMapped.length > (mappedIcon.folder || '').length) {
+                                            mappedIcon = { icon: mappings[sm], folder: folderMapped };
                                         }
-                                    });
-                                }
-                            } catch (err) {
-                                api.log(`Folder listing fetch failed: ${err.message}`);
-                            }
-                        }
-
-                    }
-
-                    // if only one system detected, use its icon
-                    if (detectedSystems.size === 1) {
-                        Object.values(SYSTEM_MAP)
-                            .forEach(systemEntries => {
-                                systemEntries.forEach(systemEntry => {
-                                    if (detectedSystems.has(systemEntry.system)) {
-                                        api.log(`Single system "${systemEntry.system}" detected for folder. Using its icon.`);
-                                        iconPath = path.join(iconsDir, systemEntry.icon);
                                     }
                                 });
-                            });
-                    } else if (detectedSystems.size > 0) {
-                        /// return xbox icon as default
-                        api.log(`Multiple systems detected for folder. Using default Xbox icon.`);
-                        iconPath = path.join(iconsDir, 'XBOX_-_Microsoft_-_Xbox.png');
-                        ctx.set('Multiple-Systems', "true");
 
+                                if (mappedIcon) {
+                                    api.log(`Found mapping for folder "${folderPath}": ${mappedIcon.icon}`)
+                                    const mappedIconPath = path.join(iconsDir, mappedIcon.icon);
 
+                                    // try to see if an equivalent -content icon exists
+                                    const mappedIconContentPath = path.join(iconsDir, mappedIcon.icon.replace(/(\.[^.]*)$/, '-content$1'));
+
+                                    // map content only if is a file (not a folder)
+                                    if (isFile && fs.existsSync(mappedIconContentPath)) {
+                                        api.log(`Mapped content icon exists: ${mappedIconContentPath}`)
+                                        iconPath = mappedIconContentPath;
+                                    } else if (fs.existsSync(mappedIconPath)) {
+                                        api.log(`Mapped icon exists: ${mappedIconPath}`)
+                                        iconPath = mappedIconPath;
+                                    } else {
+                                        api.log(`Mapped icon does not exist on disk: ${mappedIconPath}`)
+                                    }
+                                } else {
+                                    api.log(`No mapping found for folder: "${folderPath}"`)
+                                }
+                            }
+                        } catch (err) {
+                            api.log(`Error loading icon mappings: ${err.message}`)
+                        }
+                    }
+
+                    // 2.2 Auto-detecção usando system_map.js
+                    if (!iconPath) {
+                        debugger;
+                        api.log(`No mapped icon found. Using detectBestIcon() for: ${isFile ? fileName : folderPath}`)
+
+                        const searchText = isFile ? fileName : folderPath;
+                        const detectedIcon = detectBestIcon(searchText, api.getConfig('iconTheme') || 'monochrome');
+
+                        if (detectedIcon && detectedIcon.name) {
+                            api.log(`detectBestIcon() returned: ${detectedIcon.name}`);
+                            const detectedIconPath = path.join(iconsDir, detectedIcon.name);
+
+                            if (fs.existsSync(detectedIconPath)) {
+                                api.log(`Using detected icon: ${detectedIconPath}`);
+                                iconPath = detectedIconPath;
+                            } else {
+                                api.log(`Detected icon not found on disk: ${detectedIconPath}`);
+                            }
+                        } else {
+                            api.log(`detectBestIcon() returned no results for: ${searchText}`);
+                        }
                     }
                 }
+
 
                 ctx.set('fileName', fileName);
                 ctx.set('folderPath', folderPath);
 
-                if (iconPath) {
-                    ctx.set('icon', iconPath);
-                    if (fs.existsSync(iconPath)) {
-                        api.log(`Serving image from path: ${iconPath}`);
-                        ctx.type = 'image/png'
-                        ctx.body = fs.createReadStream(iconPath);
-                        return;
-                    } else {
-                        api.log(`No icon found: ${iconPath}`);
-                    }
-                } else {
-                    api.log(`Undefined icon`);
+                // if HFS is light mode (light theme) and  icon theme is monochrome. invert the icon
+                const isLightMode = ctx.cookies.get('hfs-theme') === 'light';
+                if (iconTheme === 'monochrome' && isLightMode) {
+                    api.log(`Light mode detected with monochrome icons, trying to use inverted icon version.`);
+                    /// proccess iconPath to find inverted version
                 }
-                return error(404, `${typeGet} not found`);
+
+                api.log(`Final result: ${iconPath ? 'Found - ' + iconPath : 'Not found'}`);
+
+                if (iconPath && fs.existsSync(iconPath)) {
+                    ctx.set('icon', iconPath);
+                    api.log(`Serving image from path: ${iconPath}`);
+
+                    // Detectar tipo de imagem baseado na extensão
+                    const ext = path.extname(iconPath).toLowerCase();
+                    if (ext === '.jpg' || ext === '.jpeg') {
+                        ctx.type = 'image/jpeg';
+                    } else if (ext === '.png') {
+                        ctx.type = 'image/png';
+                    } else {
+                        ctx.type = 'image/png'; // fallback
+                    }
+
+                    ctx.body = fs.createReadStream(iconPath);
+                    api.log(`Image sent successfully`);
+                    return;
+                }
+
+                api.log(`No ${typeGet} found for entry: ${filePath}`);
+                error(404, `${typeGet} not found`);
+
+            } catch (err) {
+                api.log(`ERROR in middleware: ${err.message}`);
+                api.log(`Stack trace: ${err.stack}`);
+                error(500, `Internal error: ${err.message}`);
             }
         },
 
@@ -962,11 +904,16 @@ exports.init = function (api) {
                 },
                 frontend: true
             },
-            cacheIcons: {
-                type: 'number',
-                defaultValue: 720,
-                label: 'Cache Icons Duration (Minutes)',
-                helperText: 'Duration to cache system detection icons in minutes. Set to 0 to disable caching. Default is 720 minutes (12 hours). This prevents repeated folder scans for icon detection.',
+
+            iconTheme: {
+                type: 'select',
+                defaultValue: 'monochrome',
+                label: 'Icon Theme',
+                helperText: 'Choose the visual style for console/system icons',
+                options: {
+                    'Monochrome': 'monochrome',
+                    'Daite (Colorful)': 'daite',
+                },
                 frontend: true
             },
 

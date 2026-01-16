@@ -1,530 +1,365 @@
 
-
-// Mapping of extensions to systems (cores)
-// Each extension can now map to multiple systems [{ system, name }, ...]
-// When an extension supports multiple systems, multiple Play buttons will be shown
+// Platform System Map
 // Based on EmulatorJS documentation: https://emulatorjs.org/docs/systems and https://emulatorjs.org/docs4devs/cores
-const SYSTEM_MAP = {
-    // ===== NINTENDO SYSTEMS =====    
 
-    '3ds': [{
-        system: '3ds', name: 'Nintendo 3DS', core: [
-            /* Emulator JS doesent have citra core, maitaining just for iconology*/
-        ], icon: '3DS_-_Nintendo_-_Nintendo_3DS.png'
-    }],
 
-    'cia': [{
-        system: '3ds', name: 'Nintendo 3DS', core: [
-            /* Emulator JS doesent have citra core, maitaining just for iconology*/
-        ], icon: '3DS_-_Nintendo_-_Nintendo_3DS.png'
-    }],
 
-    'rvz': [{
-        system: 'gamecube', name: 'Nintendo GameCube', core: [
-            /* Emulator JS doesent have a dolphin core, maitaining just for iconology*/
-        ], icon: 'GC_-_Nintendo_-_GameCube.png'
-    }],
-
-    'gcz': [{
-        system: 'gamecube', name: 'Nintendo GameCube', core: [
-            /* Emulator JS doesent have a dolphin core, maitaining just for iconology*/
-        ], icon: 'GC_-_Nintendo_-_GameCube.png'
-    }],
-
-    'gcm': [{
-        system: 'gamecube', name: 'Nintendo GameCube', core: [
-            /* Emulator JS doesent have a dolphin core, maitaining just for iconology*/
-        ], icon: 'GC_-_Nintendo_-_GameCube.png'
-    }],
-
-    // NES/Famicom - Cores: fceumm (default), nestopia
-    'nes': [{ system: 'nes', name: 'NES/Famicom', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
-    'fds': [{ system: 'nes', name: 'Famicom Disk System', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
-    'unif': [{ system: 'nes', name: 'NES/Famicom', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
-    'unf': [{ system: 'nes', name: 'NES/Famicom', core: ['fceumm', 'nestopia'], icon: 'NES_-_Nintendo_-_Nintendo_Entertainment_System.png' }],
-
-    // SNES/Super Famicom - Cores: snes9x (default), bsnes
-    'snes': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-    'smc': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-    'sfc': [{ system: 'snes', name: 'Super Famicom', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-    'fig': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-    'gd3': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-    'gd7': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-    'dx2': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-    'bsx': [{ system: 'snes', name: 'SNES Satellaview', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-    'swc': [{ system: 'snes', name: 'SNES', core: ['snes9x', 'bsnes'], icon: 'SNES_-_Nintendo_-_Super_Nintendo_Entertainment_System.png' }],
-
-    // Nintendo 64 - Cores: mupen64plus_next (default), parallel-n64
-    'n64': [{ system: 'n64', name: 'Nintendo 64', core: ['mupen64plus_next', 'parallel-n64'], icon: 'N64_-_Nintendo_-_Nintendo_64.png' }],
-    'z64': [{ system: 'n64', name: 'Nintendo 64', core: ['mupen64plus_next', 'parallel-n64'], icon: 'N64_-_Nintendo_-_Nintendo_64.png' }],
-    'v64': [{ system: 'n64', name: 'Nintendo 64', core: ['mupen64plus_next', 'parallel-n64'], icon: 'N64_-_Nintendo_-_Nintendo_64.png' }],
-
-    // Game Boy / Game Boy Color - Cores: gambatte (default), mgba
-    'gb': [{ system: 'gb', name: 'Game Boy', core: ['gambatte'], icon: 'GB_-_Nintendo_-_Game_Boy.png' }],
-    'gbc': [{ system: 'gb', name: 'Game Boy Color', core: ['gambatte'], icon: 'GBC_-_Nintendo_-_Game_Boy_Color.png' }],
-    'sgb': [{ system: 'gb', name: 'Super Game Boy', core: ['gambatte'], icon: 'GB_-_Nintendo_-_Game_Boy.png' }],
-
-    // Game Boy Advance - Core: mgba
-    'gba': [{ system: 'gba', name: 'Game Boy Advance', core: ['mgba'], icon: 'GBA_-_Nintendo_-_Game_Boy_Advance.png' }],
-
-    // Nintendo DS - Cores: melonds (default), desmume2015, desmume
-    'nds': [{ system: 'nds', name: 'Nintendo DS', core: ['melonds', 'desmume2015', 'desmume'], icon: 'NDS_-_Nintendo_-_Nintendo_DS.png' }],
-
-    // Virtual Boy - Core: beetle_vb
-    'vb': [{ system: 'vb', name: 'Virtual Boy', core: ['beetle_vb'], icon: 'VB_-_Nintendo_-_Virtual_Boy.png' }],
-    'vboy': [{ system: 'vb', name: 'Virtual Boy', core: ['beetle_vb'], icon: 'VB_-_Nintendo_-_Virtual_Boy.png' }],
+const SYSTEM_MAP = [
+    // ===== NINTENDO SYSTEMS =====
+    { system: '3ds', manufacturer: 'Nintendo', name: '3DS', extensions: ['3ds', 'cia'], core: [], icons: ['Nintendo_-_Nintendo_3DS.png', 'Nintendo_-_Nintendo_3DS-content.png'] },
+    { system: 'gamecube', manufacturer: 'Nintendo', name: 'GameCube', extensions: ['rvz', 'gcz', 'gcm', 'iso'], core: [], icons: ['Nintendo_-_GameCube.png', 'Nintendo_-_GameCube-content.png'] },
+    { system: 'nes', manufacturer: 'Nintendo', name: 'NES/Famicom', extensions: ['nes', 'fds', 'unif', 'unf'], core: ['fceumm', 'nestopia'], icons: ['Nintendo_-_Nintendo_Entertainment_System.png', 'Nintendo_-_Nintendo_Entertainment_System-content.png', 'Nintendo_-_Family_Computer_Disk_System.png', 'Nintendo_-_Family_Computer_Disk_System-content.png'] },
+    { system: 'snes', manufacturer: 'Nintendo', name: 'SNES/Super Famicom', extensions: ['snes', 'smc', 'sfc', 'fig', 'gd3', 'gd7', 'dx2', 'bsx', 'swc'], core: ['snes9x', 'bsnes'], icons: ['Nintendo_-_Super_Nintendo_Entertainment_System.png', 'Nintendo_-_Super_Nintendo_Entertainment_System-content.png', 'Nintendo_-_Satellaview.png', 'Nintendo_-_Satellaview-content.png'] },
+    { system: 'n64', manufacturer: 'Nintendo', name: '64', extensions: ['n64', 'z64', 'v64'], core: ['mupen64plus_next', 'parallel-n64'], icons: ['Nintendo_-_Nintendo_64.png', 'Nintendo_-_Nintendo_64-content.png', 'Nintendo_-_Nintendo_64DD.png', 'Nintendo_-_Nintendo_64DD-content.png'] },
+    { system: 'gb', manufacturer: 'Nintendo', name: 'Game Boy/Game Boy Color', extensions: ['gb', 'gbc', 'sgb'], core: ['gambatte'], icons: ['Nintendo_-_Game_Boy.png', 'Nintendo_-_Game_Boy-content.png', 'Nintendo_-_Game_Boy_Color.png', 'Nintendo_-_Game_Boy_Color-content.png'] },
+    { system: 'gba', manufacturer: 'Nintendo', name: 'Game Boy Advance', extensions: ['gba'], core: ['mgba'], icons: ['Nintendo_-_Game_Boy_Advance.png', 'Nintendo_-_Game_Boy_Advance-content.png'] },
+    { system: 'nds', manufacturer: 'Nintendo', name: 'DS', extensions: ['nds'], core: ['melonds', 'desmume2015', 'desmume'], icons: ['Nintendo_-_Nintendo_DS.png', 'Nintendo_-_Nintendo_DS-content.png', 'Nintendo_-_Nintendo_DSi.png', 'Nintendo_-_Nintendo_DSi-content.png'] },
+    { system: 'vb', manufacturer: 'Nintendo', name: 'Virtual Boy', extensions: ['vb', 'vboy'], core: ['beetle_vb'], icons: ['Nintendo_-_Virtual_Boy.png', 'Nintendo_-_Virtual_Boy-content.png'] },
+    { system: 'wii', manufacturer: 'Nintendo', name: 'Wii', extensions: ['wbfs', 'wia', 'iso'], core: [], icons: ['Nintendo_-_Wii.png', 'Nintendo_-_Wii-content.png'] },
+    { system: 'wiiu', manufacturer: 'Nintendo', name: 'Wii U', extensions: ['wud', 'wux', 'rpx', 'wua'], core: [], icons: ['Nintendo_-_Wii_U.png', 'Nintendo_-_Wii_U-content.png'] },
+    { system: 'switch', manufacturer: 'Nintendo', name: 'Switch', extensions: ['nsp', 'xci', 'nsz', 'xcz'], core: [], icons: ['Nintendo_-_Switch.png', 'Nintendo_-_Switch-content.png'] },
+    { system: 'pokemini', manufacturer: 'Nintendo', name: 'Pokemon Mini', extensions: ['min'], core: [], icons: ['Nintendo_-_Pokemon_Mini.png', 'Nintendo_-_Pokemon_Mini-content.png'] },
 
     // ===== SEGA SYSTEMS =====
-
-    // Sega Mega Drive/Genesis - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
-    'md': [{ system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-    'smd': [{ system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-    'gen': [{ system: 'segaMD', name: 'Sega Genesis', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-    'sg': [{ system: 'segaMD', name: 'Sega Genesis', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'MD_-_Sega_-_Mega_Drive.png' }],
-
-    // Sega Master System - Cores: smsplus (default), genesis_plus_gx
-    'sms': [{ system: 'segaMS', name: 'Sega Master System', core: ['smsplus', 'genesis_plus_gx'], icon: 'MS_-_Sega_-_Master_System.png' }],
-
-    // Sega Game Gear - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
-    'gg': [{ system: 'segaGG', name: 'Sega Game Gear', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'GG_-_Sega_-_Game_Gear.png' }],
-
-    // Sega CD - Cores: genesis_plus_gx (default), genesis_plus_gx_wide
-    'cue': [
-        { system: 'segaCD', name: 'Sega CD', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'SEGACD_-_Sega_-_Sega_CD.png' },
-        { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
-    ],
-
-    'chd': [
-        { system: 'segaCD', name: 'Sega CD', core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icon: 'SEGACD_-_Sega_-_Sega_CD.png' },
-        { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
-    ],
-
-    // Sega 32X - Core: picodrive
-    '32x': [{ system: 'sega32x', name: 'Sega 32X', core: ['picodrive'], icon: '32X_-_Sega_-_32X.png' }],
-
-    // Sega Saturn - Core: yabause
-    'ccd': [{ system: 'segaSaturn', name: 'Sega Saturn', core: ['yabause'], icon: 'SAT_-_Sega_-_Saturn.png' }],
-    'mds': [{ system: 'segaSaturn', name: 'Sega Saturn', core: ['yabause'], icon: 'SAT_-_Sega_-_Saturn.png' }],
+    { system: 'segaMD', manufacturer: 'Sega', name: 'Mega Drive/Genesis', extensions: ['md', 'smd', 'gen', 'sg', 'bin'], core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icons: ['Sega_-_Mega_Drive_-_Genesis.png', 'Sega_-_Mega_Drive_-_Genesis-content.png', 'Sega_-_Mega-CD_-_Sega_CD.png', 'Sega_-_Mega-CD_-_Sega_CD-content.png', 'Sega_-_32X.png', 'Sega_-_32X-content.png'] },
+    { system: 'segaMS', manufacturer: 'Sega', name: 'Master System', extensions: ['sms'], core: ['smsplus', 'genesis_plus_gx'], icons: ['Sega_-_Master_System_-_Mark_III.png', 'Sega_-_Master_System_-_Mark_III-content.png'] },
+    { system: 'segaGG', manufacturer: 'Sega', name: 'Game Gear', extensions: ['gg'], core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icons: ['Sega_-_Game_Gear.png', 'Sega_-_Game_Gear-content.png'] },
+    { system: 'segaCD', manufacturer: 'Sega', name: 'CD', extensions: ['cue', 'chd'], core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icons: ['Sega_-_Mega-CD_-_Sega_CD.png', 'Sega_-_Mega-CD_-_Sega_CD-content.png'] },
+    { system: 'sega32x', manufacturer: 'Sega', name: '32X', extensions: ['32x'], core: ['picodrive'], icons: ['Sega_-_32X.png', 'Sega_-_32X-content.png'] },
+    { system: 'segaSaturn', manufacturer: 'Sega', name: 'Saturn', extensions: ['ccd', 'mds'], core: ['yabause'], icons: ['Sega_-_Saturn.png', 'Sega_-_Saturn-content.png'] },
+    { system: 'dreamcast', manufacturer: 'Sega', name: 'Dreamcast', extensions: ['cdi', 'gdi'], core: [], icons: ['Sega_-_Dreamcast.png', 'Sega_-_Dreamcast-content.png'] },
+    { system: 'sg1000', manufacturer: 'Sega', name: 'SG-1000', extensions: ['sg1000'], core: [], icons: ['Sega_-_SG-1000.png', 'Sega_-_SG-1000-content.png'] },
+    { system: 'pico', manufacturer: 'Sega', name: 'PICO', extensions: ['pico'], core: [], icons: ['Sega_-_PICO.png', 'Sega_-_PICO-content.png'] },
 
     // ===== SONY SYSTEMS =====
-
-    // PlayStation - Cores: pcsx_rearmed (default), mednafen_psx_hw
-    'bin': [
-        { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' },
-        { system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }
-    ],
-    'iso': [
-        { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' },
-        { system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' },
-        {
-            system: 'gamecube', name: 'Nintendo GameCube', core: [
-                /* Emulator JS doesent have a dolphin core, maitaining just for iconology*/
-            ], icon: 'GC_-_Nintendo_-_GameCube.png'
-        }
-    ],
-    'img': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
-    'toc': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
-    'exe': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
-    'm3u': [{ system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }],
-
-    // PlayStation Portable - Core: ppsspp (requires threads)
-    'pbp': [{ system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }],
-    'cso': [{ system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }],
-    'elf': [{ system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }],
-    'prx': [{ system: 'psp', name: 'PlayStation Portable', core: ['ppsspp'], icon: 'PSP_-_Sony_-_PlayStation_Portable.png' }],
+    { system: 'psx', manufacturer: 'Sony', name: 'PlayStation/PS1', extensions: ['bin', 'iso', 'img', 'toc', 'exe', 'm3u', 'cue', 'chd', 'ecm'], core: ['pcsx_rearmed', 'mednafen_psx_hw'], icons: ['Sony_-_PlayStation.png', 'Sony_-_PlayStation-content.png'] },
+    { system: 'psp', manufacturer: 'Sony', name: 'PlayStation Portable/PSP', extensions: ['pbp', 'cso', 'elf', 'prx', 'iso'], core: ['ppsspp'], icons: ['Sony_-_PlayStation_Portable.png', 'Sony_-_PlayStation_Portable-content.png'] },
+    { system: 'ps2', manufacturer: 'Sony', name: 'PlayStation 2/PS2', extensions: ['ps2'], core: [], icons: ['Sony_-_PlayStation_2.png', 'Sony_-_PlayStation_2-content.png'] },
+    { system: 'psvita', manufacturer: 'Sony', name: 'PlayStation Vita/PSVita', extensions: ['psv', 'vita'], core: [], icons: ['Sony_-_PlayStation_Vita.png', 'Sony_-_PlayStation_Vita-content.png'] },
 
     // ===== ATARI SYSTEMS =====
-
-    // Atari 2600 - Core: stella2014
-    'a26': [{ system: 'atari2600', name: 'Atari 2600', core: ['stella2014'], icon: 'A2600_-_Atari_-_Atari_2600.png' }],
-    'bin': [
-        { system: 'atari2600', name: 'Atari 2600', core: ['stella2014'], icon: 'A2600_-_Atari_-_Atari_2600.png' },
-        { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' },
-        { system: 'segaMD', name: 'Sega Mega Drive', core: ['genesis_plus_gx', 'genesis_plus_gx_wide', 'picodrive'], icon: 'MD_-_Sega_-_Mega_Drive.png' }
-    ],
-
-    'ecm': [
-        { system: 'psx', name: 'PlayStation', core: [ /* ecm isint really compatible, but is playstation*/], icon: 'PSX_-_Sony_-_PlayStation.png' }
-    ],
-    // Atari 5200 - Core: a5200
-    'a52': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A5200_-_Atari_-_Atari_5200.png' }],
-    'car': [{ system: 'atari5200', name: 'Atari 5200', core: ['a5200'], icon: 'A5200_-_Atari_-_Atari_5200.png' }],
-
-    // Atari 7800 - Core: prosystem
-    'a78': [{ system: 'atari7800', name: 'Atari 7800', core: ['prosystem'], icon: 'A7800_-_Atari_-_Atari_7800.png' }],
-
-    // Atari Lynx - Core: handy
-    'lnx': [{ system: 'lynx', name: 'Atari Lynx', core: ['handy'], icon: 'LYNX_-_Atari_-_Lynx.png' }],
-    'lyx': [{ system: 'lynx', name: 'Atari Lynx', core: ['handy'], icon: 'LYNX_-_Atari_-_Lynx.png' }],
-    'o': [{ system: 'lynx', name: 'Atari Lynx', core: ['handy'], icon: 'LYNX_-_Atari_-_Lynx.png' }],
-
-    // Atari Jaguar - Core: virtualjaguar
-    'j64': [{ system: 'jaguar', name: 'Atari Jaguar', core: ['virtualjaguar'], icon: 'JAG_-_Atari_-_Jaguar.png' }],
-    'jag': [{ system: 'jaguar', name: 'Atari Jaguar', core: ['virtualjaguar'], icon: 'JAG_-_Atari_-_Jaguar.png' }],
+    { system: 'atari2600', manufacturer: 'Atari', name: 'Atari 2600', extensions: ['a26', 'bin'], core: ['stella2014'], icons: ['Atari_-_2600.png', 'Atari_-_2600-content.png'] },
+    { system: 'atari5200', manufacturer: 'Atari', name: 'Atari 5200', extensions: ['a52', 'car'], core: ['a5200'], icons: ['Atari_-_5200.png', 'Atari_-_5200-content.png'] },
+    { system: 'atari7800', manufacturer: 'Atari', name: 'Atari 7800', extensions: ['a78'], core: ['prosystem'], icons: ['Atari_-_7800.png', 'Atari_-_7800-content.png'] },
+    { system: 'lynx', manufacturer: 'Atari', name: 'Atari Lynx', extensions: ['lnx', 'lyx', 'o'], core: ['handy'], icons: ['Atari_-_Lynx.png', 'Atari_-_Lynx-content.png'] },
+    { system: 'jaguar', manufacturer: 'Atari', name: 'Atari Jaguar', extensions: ['j64', 'jag'], core: ['virtualjaguar'], icons: ['Atari_-_Jaguar.png', 'Atari_-_Jaguar-content.png', 'Atari_-_Jaguar_CD.png', 'Atari_-_Jaguar_CD-content.png'] },
 
     // ===== ARCADE SYSTEMS =====
-
-    // Arcade/MAME - Cores: fbneo (default), fbalpha2012_cps1, fbalpha2012_cps2, mame2003, mame2003_plus
-    'zip': [{ system: 'arcade', name: 'Arcade/MAME', core: ['fbneo', 'fbalpha2012_cps1', 'fbalpha2012_cps2', 'mame2003', 'mame2003_plus'], icon: 'ARC_-_FBNeo_-_Arcade.png' }],
-    '7z': [{ system: 'arcade', name: 'Arcade/MAME', core: ['fbneo', 'fbalpha2012_cps1', 'fbalpha2012_cps2', 'mame2003', 'mame2003_plus'], icon: 'ARC_-_FBNeo_-_Arcade.png' }],
-
-    // MAME 2003 - Cores: mame2003 (default), mame2003_plus
-    // Uses same extensions as arcade
+    { system: 'arcade', manufacturer: 'Various', name: 'Arcade/MAME', extensions: ['zip', '7z'], core: ['fbneo', 'fbalpha2012_cps1', 'fbalpha2012_cps2', 'mame2003', 'mame2003_plus'], icons: ['MAME.png', 'MAME-content.png'] },
+    { system: 'neogeo', manufacturer: 'SNK', name: 'Neo Geo', extensions: ['neo'], core: ['fbneo'], icons: ['SNK_-_Neo_Geo.png', 'SNK_-_Neo_Geo-content.png'] },
+    { system: 'neogeocd', manufacturer: 'SNK', name: 'Neo Geo CD', extensions: ['neocd'], core: [], icons: ['SNK_-_Neo_Geo_CD.png', 'SNK_-_Neo_Geo_CD-content.png'] },
+    { system: 'cps1', manufacturer: 'Capcom', name: 'Capcom CPS1', extensions: ['cps1'], core: ['fbalpha2012_cps1', 'fbneo'], icons: ['Capcom_-_CP_System_I.png'] },
+    { system: 'cps2', manufacturer: 'Capcom', name: 'Capcom CPS2', extensions: ['cps2'], core: ['fbalpha2012_cps2', 'fbneo'], icons: ['Capcom_-_CP_System_II.png'] },
+    { system: 'cps3', manufacturer: 'Capcom', name: 'Capcom CPS3', extensions: ['cps3'], core: ['fbneo'], icons: ['Capcom_-_CP_System_III.png'] },
 
     // ===== COMMODORE SYSTEMS =====
-
-    // Commodore 64 - Core: vice_x64sc
-    'd64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-    'g64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-    'x64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-    't64': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-    'tap': [
-        { system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' },
-        { system: 'vice_xvic', name: 'Commodore VIC-20', core: ['vice_xvic'], icon: 'VIC20_-_Commodore_-_VIC-20.png' }
-    ],
-    'prg': [
-        { system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' },
-        { system: 'vice_x128', name: 'Commodore 128', core: ['vice_x128'], icon: 'VICE128_-_Commodore_-_C128.png' }
-    ],
-    'p00': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-    'crt': [{ system: 'vice_x64sc', name: 'Commodore 64', core: ['vice_x64sc'], icon: 'VICE64_-_Commodore_-_C64.png' }],
-
-    // Commodore 128 - Core: vice_x128
-    'd81': [{ system: 'vice_x128', name: 'Commodore 128', core: ['vice_x128'], icon: 'VICE128_-_Commodore_-_C128.png' }],
-
-
-
-    // Commodore Amiga - Core: puae
-    'adf': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'dms': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'fdi': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'ipf': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'adz': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'hdf': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'hdz': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'lha': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'slave': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'info': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
-    'rp9': [{ system: 'amiga', name: 'Commodore Amiga', core: ['puae'], icon: 'AMIGA_-_Commodore_-_Amiga.png' }],
+    { system: 'vice_x64sc', manufacturer: 'Commodore', name: '64', extensions: ['d64', 'g64', 'x64', 't64', 'tap', 'prg', 'p00', 'crt'], core: ['vice_x64sc'], icons: ['Commodore_-_64.png', 'Commodore_-_64-content.png'] },
+    { system: 'vice_xvic', manufacturer: 'Commodore', name: 'VIC-20', extensions: ['tap'], core: ['vice_xvic'], icons: ['Commodore_-_VIC-20.png'] },
+    { system: 'vice_x128', manufacturer: 'Commodore', name: '128', extensions: ['d81', 'prg'], core: ['vice_x128'], icons: ['Commodore_-_128.png'] },
+    { system: 'amiga', manufacturer: 'Commodore', name: 'Amiga', extensions: ['adf', 'dms', 'fdi', 'ipf', 'adz', 'hdf', 'hdz', 'lha', 'slave', 'info', 'rp9'], core: ['puae'], icons: ['Commodore_-_Amiga.png', 'Commodore_-_Amiga-content.png'] },
 
     // ===== OTHER SYSTEMS =====
+    { system: '3do', manufacturer: 'Panasonic', name: '3DO', extensions: ['3do'], core: ['opera'], icons: ['The_3DO_Company_-_3DO.png', 'The_3DO_Company_-_3DO-content.png'] },
+    { system: 'coleco', manufacturer: 'Coleco', name: 'ColecoVision', extensions: ['col', 'cv', 'rom'], core: ['gearcoleco'], icons: ['Coleco_-_ColecoVision.png', 'Coleco_-_ColecoVision-content.png'] },
+    { system: 'pce', manufacturer: 'NEC', name: 'PC Engine/TurboGrafx-16', extensions: ['pce', 'sgx'], core: ['mednafen_pce'], icons: ['NEC_-_PC_Engine_-_TurboGrafx_16.png', 'NEC_-_PC_Engine_-_TurboGrafx_16-content.png', 'NEC_-_PC_Engine_CD_-_TurboGrafx-CD.png', 'NEC_-_PC_Engine_CD_-_TurboGrafx-CD-content.png'] },
+    { system: 'pcfx', manufacturer: 'NEC', name: 'PC-FX', extensions: ['pcfx', 'toc'], core: ['mednafen_pcfx'], icons: ['NEC_-_PC-FX.png', 'NEC_-_PC-FX-content.png'] },
+    { system: 'ngp', manufacturer: 'SNK', name: 'Neo Geo Pocket/Color', extensions: ['ngp', 'ngc', 'ngpc', 'npc'], core: ['mednafen_ngp'], icons: ['SNK_-_Neo_Geo_Pocket.png', 'SNK_-_Neo_Geo_Pocket-content.png', 'SNK_-_Neo_Geo_Pocket_Color.png', 'SNK_-_Neo_Geo_Pocket_Color-content.png'] },
+    { system: 'ws', manufacturer: 'Bandai', name: 'WonderSwan/WonderSwan Color', extensions: ['ws', 'wsc', 'pc2'], core: ['mednafen_wswan'], icons: ['Bandai_-_WonderSwan.png', 'Bandai_-_WonderSwan-content.png', 'Bandai_-_WonderSwan_Color.png', 'Bandai_-_WonderSwan_Color-content.png'] },
+    { system: 'dos', manufacturer: 'Microsoft', name: 'DOS', extensions: ['exe', 'com', 'bat', 'conf', 'dosz'], core: ['dosbox_pure'], icons: ['DOS.png', 'DOS-content.png'] },
+    { system: 'xbox', manufacturer: 'Microsoft', name: 'Xbox', extensions: ['xbe', 'xbox'], core: [], icons: ['Microsoft_-_Xbox.png'] },
+    { system: 'xbox360', manufacturer: 'Microsoft', name: 'Xbox 360', extensions: ['x360'], core: [], icons: ['Microsoft_-_Xbox_360.png'] },
+    { system: 'xboxone', manufacturer: 'Microsoft', name: 'Xbox One', extensions: ['xone'], core: [], icons: ['Microsoft_-_Xbox_One.png'] },
+    { system: 'msx', manufacturer: 'Microsoft', name: 'MSX', extensions: ['msx', 'mx1'], core: [], icons: ['Microsoft_-_MSX.png', 'Microsoft_-_MSX-content.png'] },
+    { system: 'msx2', manufacturer: 'Microsoft', name: 'MSX2', extensions: ['msx2', 'mx2'], core: [], icons: ['Microsoft_-_MSX2.png', 'Microsoft_-_MSX2-content.png'] },
+    { system: 'cpc', manufacturer: 'Amstrad', name: 'CPC', extensions: ['cpc', 'dsk'], core: [], icons: ['Amstrad_-_CPC.png'] },
+    { system: 'x68000', manufacturer: 'Sharp', name: 'Sharp X68000', extensions: ['x68', 'dim'], core: [], icons: ['Sharp_-_X68000.png'] },
+    { system: 'pc98', manufacturer: 'NEC', name: 'PC-98', extensions: ['pc98', 'd88'], core: [], icons: ['NEC_-_PC-98.png'] },
+    { system: 'zxspectrum', manufacturer: 'Sinclair', name: 'ZX Spectrum', extensions: ['zx', 'tzx', 'sna'], core: [], icons: ['Sinclair_-_ZX_Spectrum.png', 'Sinclair_-_ZX_Spectrum-content.png'] },
+    { system: 'vectrex', manufacturer: 'GCE', name: 'Vectrex', extensions: ['vec'], core: [], icons: ['GCE_-_Vectrex.png', 'GCE_-_Vectrex-content.png'] },
+    { system: 'scummvm', manufacturer: 'ScummVM', name: 'ScummVM', extensions: ['scummvm'], core: [], icons: ['ScummVM.png', 'ScummVM-content.png'] }
+]
+    ;
 
-    // 3DO - Core: opera
-    '3do': [{ system: '3do', name: '3DO', core: ['opera'], icon: '3DO_-_Panasonic_-_3DO.png' }],
 
-    // ColecoVision - Core: gearcoleco
-    'col': [{ system: 'coleco', name: 'ColecoVision', core: ['gearcoleco'], icon: 'COLECO_-_Coleco_-_ColecoVision.png' }],
-    'cv': [{ system: 'coleco', name: 'ColecoVision', core: ['gearcoleco'], icon: 'COLECO_-_Coleco_-_ColecoVision.png' }],
-    'rom': [{ system: 'coleco', name: 'ColecoVision', core: ['gearcoleco'], icon: 'COLECO_-_Coleco_-_ColecoVision.png' }],
 
-    // NEC PC Engine/TurboGrafx-16 - Core: mednafen_pce
-    'pce': [{ system: 'pce', name: 'PC Engine/TurboGrafx-16', core: ['mednafen_pce'], icon: 'PCE_-_NEC_-_PC_Engine.png' }],
-    'sgx': [{ system: 'pce', name: 'PC Engine SuperGrafx', core: ['mednafen_pce'], icon: 'PCE_-_NEC_-_PC_Engine.png' }],
 
-    // NEC PC-FX - Core: mednafen_pcfx
-    'pcfx': [{ system: 'pcfx', name: 'PC-FX', core: ['mednafen_pcfx'], icon: 'PCFX_-_NEC_-_PC-FX.png' }],
-    'toc': [
-        { system: 'pcfx', name: 'PC-FX', core: ['mednafen_pcfx'], icon: 'PCFX_-_NEC_-_PC-FX.png' },
-        { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
-    ],
 
-    // Neo Geo Pocket - Core: mednafen_ngp
-    'ngp': [{ system: 'ngp', name: 'Neo Geo Pocket', core: ['mednafen_ngp'], icon: 'NGP_-_SNK_-_Neo_Geo_Pocket.png' }],
-    'ngc': [{ system: 'ngp', name: 'Neo Geo Pocket Color', core: ['mednafen_ngp'], icon: 'NGP_-_SNK_-_Neo_Geo_Pocket.png' }],
-    'ngpc': [{ system: 'ngp', name: 'Neo Geo Pocket Color', core: ['mednafen_ngp'], icon: 'NGP_-_SNK_-_Neo_Geo_Pocket.png' }],
-    'npc': [{ system: 'ngp', name: 'Neo Geo Pocket Color', core: ['mednafen_ngp'], icon: 'NGP_-_SNK_-_Neo_Geo_Pocket.png' }],
+// Helper function to get compatible extensions
+const compatibleExtensions = (() => {
+    const extensions = new Set();
+    SYSTEM_MAP.forEach(platform => {
+        platform.extensions.forEach(ext => extensions.add(ext));
+    });
+    return Array.from(extensions);
+})();
 
-    // WonderSwan - Core: mednafen_wswan
-    'ws': [{ system: 'ws', name: 'WonderSwan', core: ['mednafen_wswan'], icon: 'WS_-_Bandai_-_WonderSwan.png' }],
-    'wsc': [{ system: 'ws', name: 'WonderSwan Color', core: ['mednafen_wswan'], icon: 'WSC_-_Bandai_-_WonderSwan_Color.png' }],
-    'pc2': [{ system: 'ws', name: 'WonderSwan', core: ['mednafen_wswan'], icon: 'WS_-_Bandai_-_WonderSwan.png' }],
-
-    // DOSBOX - Core: dosbox_pure (requires special setup)
-    'exe': [
-        { system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' },
-        { system: 'psx', name: 'PlayStation', core: ['pcsx_rearmed', 'mednafen_psx_hw'], icon: 'PSX_-_Sony_-_PlayStation.png' }
-    ],
-    'com': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
-    'bat': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
-    'conf': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
-    'dosz': [{ system: 'dos', name: 'DOS', core: ['dosbox_pure'], icon: 'DOS_-_Microsoft_-_DOS.png' }],
-
-    // ===== ADDITIONAL SYSTEMS (No EmulatorJS core support - iconology only) =====
-
-    // Sony PlayStation 2 - No core available
-    'ps2': [{
-        system: 'ps2', name: 'PlayStation 2', core: [
-            /* EmulatorJS doesn't have PS2 core, maintaining just for iconology */
-        ], icon: 'PS2_-_Sony_-_PlayStation_2.png'
-    }],
-
-    // Sony PlayStation 3 - No core available
-    'ps3': [{
-        system: 'ps3', name: 'PlayStation 3', core: [
-            /* EmulatorJS doesn't have PS3 core, maintaining just for iconology */
-        ], icon: 'PS3_-_Sony_-_PlayStation_3.png'
-    }],
-
-    // Sony PlayStation 4 - No core available
-    'ps4': [{
-        system: 'ps4', name: 'PlayStation 4', core: [
-            /* EmulatorJS doesn't have PS4 core, maintaining just for iconology */
-        ], icon: 'PS4_-_Sony_-_PlayStation_4.png'
-    }],
-    'pkg': [{
-        system: 'ps4', name: 'PlayStation 4', core: [
-            /* EmulatorJS doesn't have PS4 core, maintaining just for iconology */
-        ], icon: 'PS4_-_Sony_-_PlayStation_4.png'
-    }],
-
-    // Sony PlayStation Vita - No core available
-    'psv': [{
-        system: 'psvita', name: 'PlayStation Vita', core: [
-            /* EmulatorJS doesn't have PS Vita core, maintaining just for iconology */
-        ], icon: 'PSVITA_-_Sony_-_PlayStation_Vita.png'
-    }],
-    'vita': [{
-        system: 'psvita', name: 'PlayStation Vita', core: [
-            /* EmulatorJS doesn't have PS Vita core, maintaining just for iconology */
-        ], icon: 'PSVITA_-_Sony_-_PlayStation_Vita.png'
-    }],
-
-    // Sega Dreamcast - No core available
-    'cdi': [{
-        system: 'dreamcast', name: 'Sega Dreamcast', core: [
-            /* EmulatorJS doesn't have Dreamcast core, maintaining just for iconology */
-        ], icon: 'DC_-_Sega_-_Dreamcast.png'
-    }],
-    'gdi': [{
-        system: 'dreamcast', name: 'Sega Dreamcast', core: [
-            /* EmulatorJS doesn't have Dreamcast core, maintaining just for iconology */
-        ], icon: 'DC_-_Sega_-_Dreamcast.png'
-    }],
-
-    // Sega SG-1000 - No core available
-    'sg1000': [{
-        system: 'sg1000', name: 'Sega SG-1000', core: [
-            /* EmulatorJS doesn't have SG-1000 core, maintaining just for iconology */
-        ], icon: 'SG1000_-_Sega_-_SG-1000.png'
-    }],
-
-    // Sega PICO - No core available  
-    'pico': [{
-        system: 'pico', name: 'Sega PICO', core: [
-            /* EmulatorJS doesn't have PICO core, maintaining just for iconology */
-        ], icon: 'PICO_-_Sega_-_PICO.png'
-    }],
-
-    // SNK Neo Geo - Core: fbneo (arcade)
-    'neo': [{ system: 'neogeo', name: 'Neo Geo', core: ['fbneo'], icon: 'NEOGEO_-_SNK_-_Neo_Geo.png' }],
-
-    // SNK Neo Geo CD - No core available
-    'neocd': [{
-        system: 'neogeocd', name: 'Neo Geo CD', core: [
-            /* EmulatorJS doesn't have Neo Geo CD core, maintaining just for iconology */
-        ], icon: 'NEOGEOCD_-_SNK_-_Neo_Geo_CD.png'
-    }],
-
-    // Microsoft Xbox - No core available
-    'xbe': [{
-        system: 'xbox', name: 'Microsoft Xbox', core: [
-            /* EmulatorJS doesn't have Xbox core, maintaining just for iconology */
-        ], icon: 'XBOX_-_Microsoft_-_Xbox.png'
-    }],
-    'xbox': [{
-        system: 'xbox', name: 'Microsoft Xbox', core: [
-            /* EmulatorJS doesn't have Xbox core, maintaining just for iconology */
-        ], icon: 'XBOX_-_Microsoft_-_Xbox.png'
-    }],
-
-    // Microsoft Xbox 360 - No core available
-    'x360': [{
-        system: 'xbox360', name: 'Microsoft Xbox 360', core: [
-            /* EmulatorJS doesn't have Xbox 360 core, maintaining just for iconology */
-        ], icon: 'XBOX360_-_Microsoft_-_Xbox_360.png'
-    }],
-
-    // Microsoft Xbox One - No core available
-    'xone': [{
-        system: 'xboxone', name: 'Microsoft Xbox One', core: [
-            /* EmulatorJS doesn't have Xbox One core, maintaining just for iconology */
-        ], icon: 'XBOXONE_-_Microsoft_-_Xbox_One.png'
-    }],
-
-    // Nintendo Wii - No core available
-    'wbfs': [{
-        system: 'wii', name: 'Nintendo Wii', core: [
-            /* EmulatorJS doesn't have Wii core, maintaining just for iconology */
-        ], icon: 'WII_-_Nintendo_-_Wii.png'
-    }],
-    'wia': [{
-        system: 'wii', name: 'Nintendo Wii', core: [
-            /* EmulatorJS doesn't have Wii core, maintaining just for iconology */
-        ], icon: 'WII_-_Nintendo_-_Wii.png'
-    }],
-
-    // Nintendo Wii U - No core available
-    'wud': [{
-        system: 'wiiu', name: 'Nintendo Wii U', core: [
-            /* EmulatorJS doesn't have Wii U core, maintaining just for iconology */
-        ], icon: 'WIIU_-_Nintendo_-_Wii_U.png'
-    }],
-    'wux': [{
-        system: 'wiiu', name: 'Nintendo Wii U', core: [
-            /* EmulatorJS doesn't have Wii U core, maintaining just for iconology */
-        ], icon: 'WIIU_-_Nintendo_-_Wii_U.png'
-    }],
-    'rpx': [{
-        system: 'wiiu', name: 'Nintendo Wii U', core: [
-            /* EmulatorJS doesn't have Wii U core, maintaining just for iconology */
-        ], icon: 'WIIU_-_Nintendo_-_Wii_U.png'
-    }],
-    'wua': [{
-        system: 'wiiu', name: 'Nintendo Wii U', core: [
-            /* EmulatorJS doesn't have Wii U core, maintaining just for iconology */
-        ], icon: 'WIIU_-_Nintendo_-_Wii_U.png'
-    }],
-
-    // Nintendo Switch - No core available
-    'nsp': [{
-        system: 'switch', name: 'Nintendo Switch', core: [
-            /* EmulatorJS doesn't have Switch core, maintaining just for iconology */
-        ], icon: 'SWITCH_-_Nintendo_-_Switch.png'
-    }],
-    'xci': [{
-        system: 'switch', name: 'Nintendo Switch', core: [
-            /* EmulatorJS doesn't have Switch core, maintaining just for iconology */
-        ], icon: 'SWITCH_-_Nintendo_-_Switch.png'
-    }],
-    'nsz': [{
-        system: 'switch', name: 'Nintendo Switch', core: [
-            /* EmulatorJS doesn't have Switch core, maintaining just for iconology */
-        ], icon: 'SWITCH_-_Nintendo_-_Switch.png'
-    }],
-    'xcz': [{
-        system: 'switch', name: 'Nintendo Switch', core: [
-            /* EmulatorJS doesn't have Switch core, maintaining just for iconology */
-        ], icon: 'SWITCH_-_Nintendo_-_Switch.png'
-    }],
-
-    // Microsoft MSX - No core available
-    'msx': [{
-        system: 'msx', name: 'MSX', core: [
-            /* EmulatorJS doesn't have MSX core, maintaining just for iconology */
-        ], icon: 'MSX_-_Microsoft_-_MSX.png'
-    }],
-    'mx1': [{
-        system: 'msx', name: 'MSX', core: [
-            /* EmulatorJS doesn't have MSX core, maintaining just for iconology */
-        ], icon: 'MSX_-_Microsoft_-_MSX.png'
-    }],
-
-    // Microsoft MSX2 - No core available
-    'msx2': [{
-        system: 'msx2', name: 'MSX2', core: [
-            /* EmulatorJS doesn't have MSX2 core, maintaining just for iconology */
-        ], icon: 'MSX2_-_Microsoft_-_MSX2.png'
-    }],
-    'mx2': [{
-        system: 'msx2', name: 'MSX2', core: [
-            /* EmulatorJS doesn't have MSX2 core, maintaining just for iconology */
-        ], icon: 'MSX2_-_Microsoft_-_MSX2.png'
-    }],
-
-    // Amstrad CPC - No core available
-    'cpc': [{
-        system: 'cpc', name: 'Amstrad CPC', core: [
-            /* EmulatorJS doesn't have CPC core, maintaining just for iconology */
-        ], icon: 'CPC_-_Amstrad_-_CPC.png'
-    }],
-    'dsk': [{
-        system: 'cpc', name: 'Amstrad CPC', core: [
-            /* EmulatorJS doesn't have CPC core, maintaining just for iconology */
-        ], icon: 'CPC_-_Amstrad_-_CPC.png'
-    }],
-
-    // Sharp X68000 - No core available
-    'x68': [{
-        system: 'x68000', name: 'Sharp X68000', core: [
-            /* EmulatorJS doesn't have X68000 core, maintaining just for iconology */
-        ], icon: 'X68000_-_Sharp_-_X68000.png'
-    }],
-    'dim': [{
-        system: 'x68000', name: 'Sharp X68000', core: [
-            /* EmulatorJS doesn't have X68000 core, maintaining just for iconology */
-        ], icon: 'X68000_-_Sharp_-_X68000.png'
-    }],
-
-    // NEC PC-98 - No core available
-    'pc98': [{
-        system: 'pc98', name: 'NEC PC-98', core: [
-            /* EmulatorJS doesn't have PC-98 core, maintaining just for iconology */
-        ], icon: 'PC98_-_NEC_-_PC-98.png'
-    }],
-    'd88': [{
-        system: 'pc98', name: 'NEC PC-98', core: [
-            /* EmulatorJS doesn't have PC-98 core, maintaining just for iconology */
-        ], icon: 'PC98_-_NEC_-_PC-98.png'
-    }],
-
-    // Sinclair ZX Spectrum - No core available
-    'zx': [{
-        system: 'zxspectrum', name: 'ZX Spectrum', core: [
-            /* EmulatorJS doesn't have ZX Spectrum core, maintaining just for iconology */
-        ], icon: 'ZX_-_Sinclair_-_ZX_Spectrum.png'
-    }],
-    'tzx': [{
-        system: 'zxspectrum', name: 'ZX Spectrum', core: [
-            /* EmulatorJS doesn't have ZX Spectrum core, maintaining just for iconology */
-        ], icon: 'ZX_-_Sinclair_-_ZX_Spectrum.png'
-    }],
-    'sna': [{
-        system: 'zxspectrum', name: 'ZX Spectrum', core: [
-            /* EmulatorJS doesn't have ZX Spectrum core, maintaining just for iconology */
-        ], icon: 'ZX_-_Sinclair_-_ZX_Spectrum.png'
-    }],
-
-    // GCE Vectrex - No core available
-    'vec': [{
-        system: 'vectrex', name: 'Vectrex', core: [
-            /* EmulatorJS doesn't have Vectrex core, maintaining just for iconology */
-        ], icon: 'VECTREX_-_GCE_-_Vectrex.png'
-    }],
-
-    // Nintendo Pokemon Mini - No core available
-    'min': [{
-        system: 'pokemini', name: 'Pokemon Mini', core: [
-            /* EmulatorJS doesn't have Pokemon Mini core, maintaining just for iconology */
-        ], icon: 'POKEMINI_-_Nintendo_-_Pokemon_Mini.png'
-    }],
-
-    // Capcom CPS1 - Core: fbneo (arcade)
-    'cps1': [{ system: 'cps1', name: 'Capcom CPS1', core: ['fbalpha2012_cps1', 'fbneo'], icon: 'CPS1_-_Capcom_-_CP_System_I.png' }],
-
-    // Capcom CPS2 - Core: fbneo (arcade)
-    'cps2': [{ system: 'cps2', name: 'Capcom CPS2', core: ['fbalpha2012_cps2', 'fbneo'], icon: 'CPS2_-_Capcom_-_CP_System_II.png' }],
-
-    // Capcom CPS3 - Core: fbneo (arcade)
-    'cps3': [{ system: 'cps3', name: 'Capcom CPS3', core: ['fbneo'], icon: 'CPS3_-_Capcom_-_CP_System_III.png' }],
-
-    // ScummVM - No specific core
-    'scummvm': [{
-        system: 'scummvm', name: 'ScummVM', core: [
-            /* EmulatorJS doesn't have ScummVM core, maintaining just for iconology */
-        ], icon: 'SCUMMVM_-_ScummVM.png'
-    }],
+// Helper function to get platform by extension
+function getPlatformsByExtension(extension) {
+    return SYSTEM_MAP.filter(platform =>
+        platform.extensions.includes(extension.toLowerCase())
+    ) || [];
 }
 
-const compatibleExtensions = Object.keys(SYSTEM_MAP);
+// Helper function to detect platform by arbitrary text, file name or folder
+function possiblePlatforms(text) {
+    if (typeof text !== 'string') {
+        console.log('[system_map.js] possiblePlatforms: valor inesperado para text:', text);
+        text = '';
+    }
 
-// if is node.js module, export SYSTEM_MAP
+    text = text.trim().toLowerCase();
 
+
+    detectedSystems = {};
+
+    function addSystemMatch(systemEntry) {
+        if (detectedSystems[systemEntry.system]) {
+            detectedSystems[systemEntry.system][1]++;
+        } else {
+            detectedSystems[systemEntry.system] = [systemEntry, 1];
+        }
+    }
+
+
+
+    if (text.includes('/') || text.includes('\\')) {
+        var pathParts = text.split(/[\\/]/);
+        for (const part of pathParts) {
+            var pp = possiblePlatforms(part);
+            if (pp) {
+
+                for (const platform of pp) {
+                    // platform is exactly an entry of System_map
+                    addSystemMatch(platform);
+                }
+            }
+        }
+
+    } else {
+
+        console.log(`[system_map.js] possiblePlatforms: analyzing text "${text}"`);
+
+
+
+        let tryParts = [];
+
+        // check if text is a filename
+        if (text.includes('.')) {
+            // is a filename
+            let nameParts = text.split('.');
+            let extension = nameParts.length > 0 ? nameParts.pop() : '';
+            let name = nameParts.join('.');
+
+
+            if (name) {
+                console.log(`[system_map.js] possiblePlatforms: detected name "${name}"`);
+                tryParts.push(name);
+            }
+
+            if (extension) {
+                console.log(`[system_map.js] possiblePlatforms: detected extension "${extension}"`);
+                extPlatforms = getPlatformsByExtension(extension);
+                if (extPlatforms) {
+                    console.log(`[system_map.js] possiblePlatforms: detected compatible extension "${extension}"`);
+                    extPlatforms.forEach(platform => {
+                        addSystemMatch(platform);
+                    });
+                }
+                tryParts.push(extension);
+            }
+
+        } else {
+            // just split everything by spaces
+            tryParts = text.split('/').join(' ').split(' ');
+        }
+
+        // remove empty or blank parts
+        tryParts = tryParts.map(part => part?.trim() || '').filter(part => part.length > 0);
+
+
+        SYSTEM_MAP.forEach(systemEntry => {
+
+            tryParts.forEach(part => {
+
+                [systemEntry.manufacturer, systemEntry.name, systemEntry.system, ...systemEntry.core, ...systemEntry.extensions, ...systemEntry.icons].forEach(sp => {
+                    systemPart = (sp || '').toLowerCase().split('_').join(' ').split('/').join(' ');
+                    if (systemPart.length > 0) {
+
+                        if (systemPart.toLowerCase().includes(part)) {
+                            console.log(`Matched part "${part}" with system part "${systemPart}" for system "${systemEntry.system}"`);
+                            addSystemMatch(systemEntry);
+                        }
+                        if (systemPart.toLowerCase() === part) {
+                            console.log(`Exact match for part "${part}" with system part "${systemPart}" for system "${systemEntry.system}"`);
+                            addSystemMatch(systemEntry);
+                        }
+                    }
+
+                });
+
+            });
+        });
+    }
+
+    // convert detectedSystems to array and sort by count (most matches first)
+    const detectedArray = Object.values(detectedSystems);
+    detectedArray.sort((a, b) => b[1] - a[1]);
+    const finalArray = detectedArray
+        .map(entry => entry[0]);
+    console.log('Detected platforms:', finalArray);
+    return finalArray;
+
+}
+// Helper function to detect the first platform by arbitrary text, file name or folder
+function tryDetectPlatform(text) {
+
+    if (!text) return null;
+
+    // try get exactly matching system first
+    let platform = SYSTEM_MAP.find((platform) => platform.system.toLowerCase() === text.toLowerCase()) || null;
+    if (platform) return platform;
+    // otherwise, use possiblePlatforms
+    var plats = possiblePlatforms(text);
+
+    // return the first platform with more points
+    return plats.length > 0 ? plats[0] : null;
+}
+
+
+// Helper function to get all icons from all platforms
+// MainIcons: true = only main icons, false = only -content icons, null = all icons
+function getAllIcons(theme, mainIcons) {
+    theme = theme || 'monochrome';
+    const icons = [];
+    SYSTEM_MAP.forEach(platform => {
+        if (platform.icons && Array.isArray(platform.icons)) {
+            platform.icons.forEach(iconName => {
+                icons.push({
+                    name: iconName,
+                    platform: platform.name,
+                    system: platform.system,
+                    manufacturer: platform.manufacturer,
+                    path: `/icons/${theme}/${iconName}`
+                });
+            });
+        }
+    });
+
+    mainIcons = mainIcons || null;
+    if (mainIcons === false) {
+        icons = icons.filter(icon => icon.name.toLowerCase().includes('-content'));
+    } else if (mainIcons === true) {
+        icons = icons.filter(icon => !icon.name.toLowerCase().includes('-content'));
+    }
+
+    return icons;
+}
+
+
+// Helper function to detect icons from text
+function detectIcons(text, theme, mainIcons) {
+    const icons = [];
+
+    // Get candidate platforms using existing logic
+    const platforms = possiblePlatforms(text);
+
+    theme = theme || 'monochrome';
+    platforms.forEach(platform => {
+
+        if (!platform || !platform.icons) {
+            return
+        }
+
+
+        platform.icons.forEach(function (iconName) {
+
+            if (platform.icons.length > 1) {
+
+                if (mainIcons === true && iconName.toLowerCase().includes('-content')) {
+                    return; // skip -content icons
+                }
+                if (mainIcons === false && !iconName.toLowerCase().includes('-content')) {
+                    return; // skip main icons
+                }
+            }
+
+            return icons.push({
+                name: iconName,
+                path: `/icons/${theme}/${iconName}`,
+                platform: platform.name,
+                system: platform.system
+            });
+        });
+
+    });
+    return icons;
+}
+
+// Helper function to get best icon
+// If text is a file with compatible extension, prefer -content icons
+// Otherwise, prefer main icons (without -content)
+function detectBestIcon(text, theme) {
+    if (!text) return null;
+    // Check if text appears to be a file with extension
+    const hasExtension = text.includes('.') && !text.endsWith('.');
+    // Get multiple results to have options
+    let results = detectIcons(text, theme, hasExtension ? false : null);
+    if (results.length === 0) return null;
+    return results[0];
+}
+
+// Function to get all systems that can run a file with a given extension
+// Returns an array of systems
+function getAllSystemsFromFile(filename) {
+    if (filename) {
+        const ext = filename.indexOf('.') === -1 ? filename : filename.split('.').pop().toLowerCase()
+        return SYSTEM_MAP.filter(platform =>
+            platform.extensions.includes(ext)
+        );
+    }
+    return [];
+}
+
+// Function to clean filename
+function cleanFilename(filename) {
+    // Remove extension
+    let cleaned = filename.substring(0, filename.lastIndexOf('.')) || filename
+    // Remove content in parentheses
+    cleaned = cleaned.replace(/\s*\([^)]*\)\s*/g, ' ')
+    // Remove content in square brackets
+    cleaned = cleaned.replace(/\s*\[[^\]]*\]\s*/g, ' ')
+    // Clean up multiple spaces and trim
+    cleaned = cleaned.replace(/\s+/g, ' ').trim()
+
+    //remove numbers on beggining of file names before -, names like "1234 - Game Title" becomes  "Game Title"
+    cleaned = cleaned.replace(/^\d+\s*-\s*/, '').trim()
+
+    // Remove numbering like "Part 1", "Disc 2", "Episode 3"
+    cleaned = cleaned.replace(/\s+(Part|Disc|Episode|CD|Vol|Volume)\s*\d+$/i, '').trim()
+
+    return cleaned
+}
+
+// Export for Node.js (backend)
 if (typeof module !== 'undefined' && module.exports) {
+    console.log('[system_map.js] Exporting module for Node.js');
+    console.log('[system_map.js] compatibleExtensions type:', typeof compatibleExtensions);
+    console.log('[system_map.js] compatibleExtensions isArray:', Array.isArray(compatibleExtensions));
+    console.log('[system_map.js] compatibleExtensions length:', compatibleExtensions ? compatibleExtensions.length : 'undefined');
+
+    // Export detectIcons também como detectIcon para compatibilidade
     module.exports = {
         SYSTEM_MAP,
-        compatibleExtensions
+        compatibleExtensions,
+        detectBestIcon,
+        detectIcons,
+        tryDetectPlatform,
+        possiblePlatforms,
+        cleanFilename,
+        getPlatformByExtension: getPlatformsByExtension,
+        getAllSystemsFromFile,
+        getAllIcons
     };
 
+    console.log('[system_map.js] Module exported. Keys:', Object.keys(module.exports).join(', '));
 }
-
-
