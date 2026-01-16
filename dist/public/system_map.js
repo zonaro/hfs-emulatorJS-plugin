@@ -8,12 +8,12 @@ const SYSTEM_MAP = [
     // ===== NINTENDO SYSTEMS =====
     { system: '3ds', manufacturer: 'Nintendo', name: '3DS', extensions: ['3ds', 'cia'], core: [], icons: ['Nintendo_-_Nintendo_3DS.png', 'Nintendo_-_Nintendo_3DS-content.png'] },
     { system: 'gamecube', manufacturer: 'Nintendo', name: 'GameCube', extensions: ['rvz', 'gcz', 'gcm', 'iso'], core: [], icons: ['Nintendo_-_GameCube.png', 'Nintendo_-_GameCube-content.png'] },
-    { system: 'nes', manufacturer: 'Nintendo', name: 'NES/Famicom', extensions: ['nes', 'fds', 'unif', 'unf'], core: ['fceumm', 'nestopia'], icons: ['Nintendo_-_Nintendo_Entertainment_System.png', 'Nintendo_-_Nintendo_Entertainment_System-content.png', 'Nintendo_-_Family_Computer_Disk_System.png', 'Nintendo_-_Family_Computer_Disk_System-content.png'] },
-    { system: 'snes', manufacturer: 'Nintendo', name: 'SNES/Super Famicom', extensions: ['snes', 'smc', 'sfc', 'fig', 'gd3', 'gd7', 'dx2', 'bsx', 'swc'], core: ['snes9x', 'bsnes'], icons: ['Nintendo_-_Super_Nintendo_Entertainment_System.png', 'Nintendo_-_Super_Nintendo_Entertainment_System-content.png', 'Nintendo_-_Satellaview.png', 'Nintendo_-_Satellaview-content.png'] },
-    { system: 'n64', manufacturer: 'Nintendo', name: '64', extensions: ['n64', 'z64', 'v64'], core: ['mupen64plus_next', 'parallel-n64'], icons: ['Nintendo_-_Nintendo_64.png', 'Nintendo_-_Nintendo_64-content.png', 'Nintendo_-_Nintendo_64DD.png', 'Nintendo_-_Nintendo_64DD-content.png'] },
+    { system: 'nes', manufacturer: 'Nintendo', name: 'NES/Famicom', extensions: ['nes', 'fds', 'unif', 'unf'], core: ['fceumm'], icons: ['Nintendo_-_Nintendo_Entertainment_System.png', 'Nintendo_-_Nintendo_Entertainment_System-content.png', 'Nintendo_-_Family_Computer_Disk_System.png', 'Nintendo_-_Family_Computer_Disk_System-content.png'] },
+    { system: 'snes', manufacturer: 'Nintendo', name: 'SNES/Super Famicom', extensions: ['snes', 'smc', 'sfc', 'fig', 'gd3', 'gd7', 'dx2', 'bsx', 'swc'], core: ['snes9x'], icons: ['Nintendo_-_Super_Nintendo_Entertainment_System.png', 'Nintendo_-_Super_Nintendo_Entertainment_System-content.png', 'Nintendo_-_Satellaview.png', 'Nintendo_-_Satellaview-content.png'] },
+    { system: 'n64', manufacturer: 'Nintendo', name: '64', extensions: ['n64', 'z64', 'v64'], core: ['mupen64plus_next'], icons: ['Nintendo_-_Nintendo_64.png', 'Nintendo_-_Nintendo_64-content.png', 'Nintendo_-_Nintendo_64DD.png', 'Nintendo_-_Nintendo_64DD-content.png'] },
     { system: 'gb', manufacturer: 'Nintendo', name: 'Game Boy/Game Boy Color', extensions: ['gb', 'gbc', 'sgb'], core: ['gambatte'], icons: ['Nintendo_-_Game_Boy.png', 'Nintendo_-_Game_Boy-content.png', 'Nintendo_-_Game_Boy_Color.png', 'Nintendo_-_Game_Boy_Color-content.png'] },
     { system: 'gba', manufacturer: 'Nintendo', name: 'Game Boy Advance', extensions: ['gba'], core: ['mgba'], icons: ['Nintendo_-_Game_Boy_Advance.png', 'Nintendo_-_Game_Boy_Advance-content.png'] },
-    { system: 'nds', manufacturer: 'Nintendo', name: 'DS', extensions: ['nds'], core: ['melonds', 'desmume2015', 'desmume'], icons: ['Nintendo_-_Nintendo_DS.png', 'Nintendo_-_Nintendo_DS-content.png', 'Nintendo_-_Nintendo_DSi.png', 'Nintendo_-_Nintendo_DSi-content.png'] },
+    { system: 'nds', manufacturer: 'Nintendo', name: 'DS', extensions: ['nds'], core: ['melonds'], icons: ['Nintendo_-_Nintendo_DS.png', 'Nintendo_-_Nintendo_DS-content.png', 'Nintendo_-_Nintendo_DSi.png', 'Nintendo_-_Nintendo_DSi-content.png'] },
     { system: 'vb', manufacturer: 'Nintendo', name: 'Virtual Boy', extensions: ['vb', 'vboy'], core: ['beetle_vb'], icons: ['Nintendo_-_Virtual_Boy.png', 'Nintendo_-_Virtual_Boy-content.png'] },
     { system: 'wii', manufacturer: 'Nintendo', name: 'Wii', extensions: ['wbfs', 'wia', 'iso'], core: [], icons: ['Nintendo_-_Wii.png', 'Nintendo_-_Wii-content.png'] },
     { system: 'wiiu', manufacturer: 'Nintendo', name: 'Wii U', extensions: ['wud', 'wux', 'rpx', 'wua'], core: [], icons: ['Nintendo_-_Wii_U.png', 'Nintendo_-_Wii_U-content.png'] },
@@ -21,10 +21,10 @@ const SYSTEM_MAP = [
     { system: 'pokemini', manufacturer: 'Nintendo', name: 'Pokemon Mini', extensions: ['min'], core: [], icons: ['Nintendo_-_Pokemon_Mini.png', 'Nintendo_-_Pokemon_Mini-content.png'] },
 
     // ===== SEGA SYSTEMS =====
-    { system: 'segaMD', manufacturer: 'Sega', name: 'Mega Drive/Genesis', extensions: ['md', 'smd', 'gen', 'sg', 'bin'], core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icons: ['Sega_-_Mega_Drive_-_Genesis.png', 'Sega_-_Mega_Drive_-_Genesis-content.png', 'Sega_-_Mega-CD_-_Sega_CD.png', 'Sega_-_Mega-CD_-_Sega_CD-content.png', 'Sega_-_32X.png', 'Sega_-_32X-content.png'] },
-    { system: 'segaMS', manufacturer: 'Sega', name: 'Master System', extensions: ['sms'], core: ['smsplus', 'genesis_plus_gx'], icons: ['Sega_-_Master_System_-_Mark_III.png', 'Sega_-_Master_System_-_Mark_III-content.png'] },
-    { system: 'segaGG', manufacturer: 'Sega', name: 'Game Gear', extensions: ['gg'], core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icons: ['Sega_-_Game_Gear.png', 'Sega_-_Game_Gear-content.png'] },
-    { system: 'segaCD', manufacturer: 'Sega', name: 'CD', extensions: ['cue', 'chd'], core: ['genesis_plus_gx', 'genesis_plus_gx_wide'], icons: ['Sega_-_Mega-CD_-_Sega_CD.png', 'Sega_-_Mega-CD_-_Sega_CD-content.png'] },
+    { system: 'segaMD', manufacturer: 'Sega', name: 'Mega Drive/Genesis', extensions: ['md', 'smd', 'gen', 'sg', 'bin'], core: ['genesis_plus_gx'], icons: ['Sega_-_Mega_Drive_-_Genesis.png', 'Sega_-_Mega_Drive_-_Genesis-content.png', 'Sega_-_Mega-CD_-_Sega_CD.png', 'Sega_-_Mega-CD_-_Sega_CD-content.png', 'Sega_-_32X.png', 'Sega_-_32X-content.png'] },
+    { system: 'segaMS', manufacturer: 'Sega', name: 'Master System', extensions: ['sms'], core: ['smsplus'], icons: ['Sega_-_Master_System_-_Mark_III.png', 'Sega_-_Master_System_-_Mark_III-content.png'] },
+    { system: 'segaGG', manufacturer: 'Sega', name: 'Game Gear', extensions: ['gg'], core: ['genesis_plus_gx'], icons: ['Sega_-_Game_Gear.png', 'Sega_-_Game_Gear-content.png'] },
+    { system: 'segaCD', manufacturer: 'Sega', name: 'CD', extensions: ['cue', 'chd'], core: ['genesis_plus_gx'], icons: ['Sega_-_Mega-CD_-_Sega_CD.png', 'Sega_-_Mega-CD_-_Sega_CD-content.png'] },
     { system: 'sega32x', manufacturer: 'Sega', name: '32X', extensions: ['32x'], core: ['picodrive'], icons: ['Sega_-_32X.png', 'Sega_-_32X-content.png'] },
     { system: 'segaSaturn', manufacturer: 'Sega', name: 'Saturn', extensions: ['ccd', 'mds'], core: ['yabause'], icons: ['Sega_-_Saturn.png', 'Sega_-_Saturn-content.png'] },
     { system: 'dreamcast', manufacturer: 'Sega', name: 'Dreamcast', extensions: ['cdi', 'gdi'], core: [], icons: ['Sega_-_Dreamcast.png', 'Sega_-_Dreamcast-content.png'] },
@@ -32,7 +32,7 @@ const SYSTEM_MAP = [
     { system: 'pico', manufacturer: 'Sega', name: 'PICO', extensions: ['pico'], core: [], icons: ['Sega_-_PICO.png', 'Sega_-_PICO-content.png'] },
 
     // ===== SONY SYSTEMS =====
-    { system: 'psx', manufacturer: 'Sony', name: 'PlayStation/PS1', extensions: ['bin', 'iso', 'img', 'toc', 'exe', 'm3u', 'cue', 'chd', 'ecm'], core: ['pcsx_rearmed', 'mednafen_psx_hw'], icons: ['Sony_-_PlayStation.png', 'Sony_-_PlayStation-content.png'] },
+    { system: 'psx', manufacturer: 'Sony', name: 'PlayStation/PS1', extensions: ['bin', 'iso', 'img', 'toc', 'exe', 'm3u', 'cue', 'chd', 'ecm'], core: ['pcsx_rearmed'], icons: ['Sony_-_PlayStation.png', 'Sony_-_PlayStation-content.png'] },
     { system: 'psp', manufacturer: 'Sony', name: 'PlayStation Portable/PSP', extensions: ['pbp', 'cso', 'elf', 'prx', 'iso'], core: ['ppsspp'], icons: ['Sony_-_PlayStation_Portable.png', 'Sony_-_PlayStation_Portable-content.png'] },
     { system: 'ps2', manufacturer: 'Sony', name: 'PlayStation 2/PS2', extensions: ['ps2'], core: [], icons: ['Sony_-_PlayStation_2.png', 'Sony_-_PlayStation_2-content.png'] },
     { system: 'psvita', manufacturer: 'Sony', name: 'PlayStation Vita/PSVita', extensions: ['psv', 'vita'], core: [], icons: ['Sony_-_PlayStation_Vita.png', 'Sony_-_PlayStation_Vita-content.png'] },
@@ -45,11 +45,11 @@ const SYSTEM_MAP = [
     { system: 'jaguar', manufacturer: 'Atari', name: 'Atari Jaguar', extensions: ['j64', 'jag'], core: ['virtualjaguar'], icons: ['Atari_-_Jaguar.png', 'Atari_-_Jaguar-content.png', 'Atari_-_Jaguar_CD.png', 'Atari_-_Jaguar_CD-content.png'] },
 
     // ===== ARCADE SYSTEMS =====
-    { system: 'arcade', manufacturer: 'Various', name: 'Arcade/MAME', extensions: ['zip', '7z'], core: ['fbneo', 'fbalpha2012_cps1', 'fbalpha2012_cps2', 'mame2003', 'mame2003_plus'], icons: ['MAME.png', 'MAME-content.png'] },
+    { system: 'arcade', manufacturer: 'Various', name: 'Arcade/MAME', extensions: ['zip', '7z'], core: ['fbneo'], icons: ['MAME.png', 'MAME-content.png'] },
     { system: 'neogeo', manufacturer: 'SNK', name: 'Neo Geo', extensions: ['neo'], core: ['fbneo'], icons: ['SNK_-_Neo_Geo.png', 'SNK_-_Neo_Geo-content.png'] },
     { system: 'neogeocd', manufacturer: 'SNK', name: 'Neo Geo CD', extensions: ['neocd'], core: [], icons: ['SNK_-_Neo_Geo_CD.png', 'SNK_-_Neo_Geo_CD-content.png'] },
-    { system: 'cps1', manufacturer: 'Capcom', name: 'Capcom CPS1', extensions: ['cps1'], core: ['fbalpha2012_cps1', 'fbneo'], icons: ['Capcom_-_CP_System_I.png'] },
-    { system: 'cps2', manufacturer: 'Capcom', name: 'Capcom CPS2', extensions: ['cps2'], core: ['fbalpha2012_cps2', 'fbneo'], icons: ['Capcom_-_CP_System_II.png'] },
+    { system: 'cps1', manufacturer: 'Capcom', name: 'Capcom CPS1', extensions: ['cps1'], core: ['fbneo'], icons: ['Capcom_-_CP_System_I.png'] },
+    { system: 'cps2', manufacturer: 'Capcom', name: 'Capcom CPS2', extensions: ['cps2'], core: ['fbneo'], icons: ['Capcom_-_CP_System_II.png'] },
     { system: 'cps3', manufacturer: 'Capcom', name: 'Capcom CPS3', extensions: ['cps3'], core: ['fbneo'], icons: ['Capcom_-_CP_System_III.png'] },
 
     // ===== COMMODORE SYSTEMS =====
