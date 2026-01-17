@@ -429,7 +429,7 @@
         window.EJS_alignStartButton = 'center';
 
         window.EJS_pathtodata = `https://cdn.emulatorjs.org/${emuVersion}/data/`
-
+        window.EJS_threads = true;
 
         console.log('[EmulatorJS] Global variables set:')
 
@@ -770,6 +770,7 @@
     }
 
 
+
     HFS.onEvent('fileMenu', ({ entry, menu, props }) => {
 
 
@@ -783,7 +784,10 @@
         // Debug: logs when fileMenu is called
         console.log('[EmulatorJS] fileMenu called for', filename, 'ext=', ext, 'detected systems=', allSystems.length)
 
+
+
         if (!allSystems || allSystems.length === 0 || entry.isFolder) return
+
 
         console.log('[EmulatorJS] Detected systems for', filename, ':', allSystems)
 

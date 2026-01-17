@@ -1,25 +1,25 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Deploy para HFS",
-            "type": "shell",
-            "command": "powershell.exe",
-            "args": [
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}\\deploy.ps1"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "new"
-            },
-            "problemMatcher": []
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Deploy para HFS",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}\\deploy.ps1"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "new"
+			},
+			"problemMatcher": []
+		}
+	]
 }

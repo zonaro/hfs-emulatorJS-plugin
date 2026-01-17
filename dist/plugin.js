@@ -7,7 +7,7 @@
 // Allows opening ROMs in JavaScript emulators directly in the browser
 
 exports.description = "Plugin that integrates EmulatorJS to emulate classic console games directly in the browser"
-exports.version = 1.4;
+exports.version = 1.5;
 exports.apiRequired = 12.9;
 
 
@@ -667,9 +667,15 @@ exports.init = function (api) {
         frontend_js: ['system_map.js', 'emulator.js'],
         frontend_css: 'emulator.css',
         middleware(ctx) {
+
+            // Adiciona os headers necessários para SharedArrayBuffer/Threads
+            ctx.set('Cross-Origin-Opener-Policy', 'same-origin');
+            ctx.set('Cross-Origin-Embedder-Policy', 'require-corp');
+
             const allowedGets = ['game_cover']
             const typeGet = ctx.query.get;
             if (!allowedGets.includes(typeGet)) return;
+
 
             ctx.state.considerAsGui = true
             ctx.state.download_counter_ignore = true

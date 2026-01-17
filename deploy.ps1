@@ -21,6 +21,13 @@ if (-not (Test-Path $destDir)) {
     New-Item -ItemType Directory -Path $destDir -Force | Out-Null
 }
 
+# Remove a pasta 'public' do destino, se existir
+$publicDir = Join-Path $destDir "public"
+if (Test-Path $publicDir) {
+    Write-Host "Removendo pasta 'public' do destino..." -ForegroundColor Yellow
+    Remove-Item -Path $publicDir -Recurse -Force
+}
+
 try { 
     # Copia os arquivos
     Write-Host "Copiando arquivos..." -ForegroundColor Yellow
@@ -29,6 +36,11 @@ try {
     Write-Host ""
     Write-Host "Deploy concluido com sucesso!" -ForegroundColor Green
     Write-Host "Plugin copiado para: $destDir" -ForegroundColor Green
+    Write-Host ""
+
+    # Lista os arquivos e pastas do destino
+    Write-Host "Arquivos no destino:" -ForegroundColor Cyan
+    Get-ChildItem -Recurse -Force $destDir | Select-Object FullName
     
 }
 catch {
@@ -36,3 +48,4 @@ catch {
     Write-Host "ERRO durante o deploy: $_" -ForegroundColor Red
     exit 1
 }
+
