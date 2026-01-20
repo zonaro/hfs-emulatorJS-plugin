@@ -31,10 +31,15 @@ exports.init = function (api) {
     // game info cache directory
     const gameInfoDir = path.join(configuredBase, 'gameinfo')
 
+    const savesDir = path.join(configuredBase, 'saves')
+
     // icons directory (in public, so frontend can access too)
     const iconsDir = path.join(publicDir, 'icons', (api.getConfig('iconTheme') || 'monochrome'))
     const systemMapPath = path.join(publicDir, 'system_map.js');
     const mappingFile = path.join(configuredBase, 'icon-mappings.json')
+
+    //current logged user
+
 
 
 
@@ -659,7 +664,171 @@ exports.init = function (api) {
                 api.log(`[setFolderIcon] Error: ${err.message}`)
                 return { success: false, error: err.message }
             }
+        },
+
+    }
+
+    // Helper functions for save/load state endpoints
+    async function handleSaveState(ctx) {
+        try {
+            api.log(`[handleSaveState] Starting save state`);
+            const body = await getBody(ctx);
+            api.log(`[handleSaveState] Body received: ${typeof body}, keys: ${Object.keys(body)}`);
+            const { state, screenshot } = body;
+            api.log(`[handleSaveState] state length: ${state ? state.length : 'undefined'}, screenshot length: ${screenshot ? screenshot.length : 'undefined'}`);
+
+
+            const gameName = fixGameName(ctx.query.gameName || '');
+            api.log(`[handleSaveState] gameName: ${gameName}`);
+            if (!gameName) {
+                ctx.status = 400;
+                ctx.body = 'Missing gameName';
+                return;
+            }
+
+            const userId = api.getCurrentUsername(ctx);
+            api.log(`[handleSaveState] userId: ${userId}`);
+            if (!userId || userId.length === 0) {
+                ctx.status = 400;
+                ctx.body = 'Missing user identification';
+                return;
+            }
+            const gameDir = path.join(savesDir, userId, gameName);
+            api.log(`[handleSaveState] gameDir: ${gameDir}`);
+            ensureDir(fs, gameDir);
+            const stateFile = path.join(gameDir, 'save.state');
+            api.log(`[handleSaveState] Writing state to: ${stateFile}`);
+            fs.writeFileSync(stateFile, Buffer.from(state, 'base64'));
+            if (screenshot) {
+                const screenshotFile = path.join(gameDir, 'save.png');
+                api.log(`[handleSaveState] Writing screenshot to: ${screenshotFile}`);
+                fs.writeFileSync(screenshotFile, Buffer.from(screenshot, 'base64'));
+            }
+            api.log(`[handleSaveState] Save state successful`);
+            ctx.status = 200;
+            ctx.body = 'OK';
+        } catch (err) {
+            api.log(`Error saving state: ${err.message}`);
+            api.log(`Error stack: ${err.stack}`);
+            ctx.status = 500;
+            ctx.body = 'Error';
         }
+    }
+
+    async function handleLoadState(ctx) {
+        try {
+
+
+            const gameName = fixGameName(ctx.query.gameName || '');
+            if (!gameName) {
+                ctx.status = 400;
+                ctx.body = 'Missing gameName';
+                return;
+            }
+            const userId = api.getCurrentUsername(ctx);
+            if (!userId || userId.length === 0) {
+                ctx.status = 400;
+                ctx.body = 'Missing user identification';
+                return;
+            }
+
+            const gameDir = path.join(savesDir, userId, gameName);
+            const stateFile = path.join(gameDir, 'save.state');
+            if (fs.existsSync(stateFile)) {
+                if (ctx.method === 'HEAD') {
+                    ctx.status = 200;
+                    return;
+                }
+                const data = fs.readFileSync(stateFile);
+                ctx.status = 200;
+                ctx.type = 'application/octet-stream';
+                ctx.body = data;
+            } else {
+                ctx.status = 404;
+                ctx.body = 'Save State Not found';
+            }
+        } catch (err) {
+            api.log(`Error loading state: ${err.message}`);
+            ctx.status = 500;
+            ctx.body = 'Error';
+        }
+    }
+
+    async function handleSaveGame(ctx) {
+        try {
+            const body = await getBody(ctx);
+            const { file } = body;
+            const gameName = fixGameName(ctx.query.gameName || '');
+            if (!gameName) {
+                ctx.status = 400;
+                ctx.body = 'Missing gameName';
+                return;
+            }
+            const userId = api.getCurrentUsername(ctx);
+            if (!userId || userId.length === 0) {
+                ctx.status = 400;
+                ctx.body = 'Missing user identification';
+                return;
+            }
+            const gameDir = path.join(savesDir, userId, gameName);
+            ensureDir(fs, gameDir);
+            const saveFile = path.join(gameDir, 'save.srm');
+            fs.writeFileSync(saveFile, Buffer.from(file, 'base64'));
+            ctx.status = 200;
+            ctx.body = 'OK';
+        } catch (err) {
+            api.log(`Error saving game: ${err.message}`);
+            ctx.status = 500;
+            ctx.body = 'Error';
+        }
+    }
+
+    async function handleLoadGame(ctx) {
+        try {
+            const gameName = fixGameName(ctx.query.gameName || '');
+            if (!gameName) {
+                ctx.status = 400;
+                ctx.body = 'Missing gameName';
+                return;
+            }
+            const userId = api.getCurrentUsername(ctx);
+            if (!userId || userId.length === 0) {
+                ctx.status = 400;
+                ctx.body = 'Missing user identification';
+                return;
+            }
+            const gameDir = path.join(savesDir, userId, gameName);
+            const saveFile = path.join(gameDir, 'save.srm');
+            if (fs.existsSync(saveFile)) {
+                const data = fs.readFileSync(saveFile);
+                ctx.status = 200;
+                ctx.type = 'application/octet-stream';
+                ctx.body = data;
+            } else {
+                ctx.status = 404;
+                ctx.body = 'SRAM Not found';
+            }
+        } catch (err) {
+            api.log(`Error loading game: ${err.message}`);
+            ctx.status = 500;
+            ctx.body = 'Error';
+        }
+    }
+
+    // Helper to get request body
+    function getBody(ctx) {
+        return new Promise((resolve, reject) => {
+            let body = '';
+            ctx.req.on('data', chunk => body += chunk);
+            ctx.req.on('end', () => {
+                try {
+                    resolve(JSON.parse(body));
+                } catch (e) {
+                    resolve({});
+                }
+            });
+            ctx.req.on('error', reject);
+        });
     }
 
     return {
@@ -668,12 +837,45 @@ exports.init = function (api) {
         frontend_css: 'emulator.css',
         middleware(ctx) {
 
-            // Adiciona os headers necessários para SharedArrayBuffer/Threads
-            ctx.set('Cross-Origin-Opener-Policy', 'same-origin');
-            ctx.set('Cross-Origin-Embedder-Policy', 'require-corp');
+            // Define headers for cross-origin
+            if (ctx.path.startsWith('/~/emulatorjs/')) {
+                ctx.set('Access-Control-Allow-Origin', '*');
+                ctx.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+                ctx.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+                if (ctx.method === 'OPTIONS') {
+                    ctx.status = 200;
+                    return;
+                }
+            }
 
             const allowedGets = ['game_cover']
             const typeGet = ctx.query.get;
+            if (allowedGets.includes(typeGet)) {
+                // Para requisições de imagens, definir apenas CORS
+                ctx.set('Access-Control-Allow-Origin', '*');
+                ctx.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+            } else {
+                // Para outras requisições (incluindo o emulador), definir COEP/COOP
+                ctx.set('Cross-Origin-Opener-Policy', 'same-origin');
+                ctx.set('Cross-Origin-Embedder-Policy', 'credentialless');
+            }
+
+            // Handle save/load state endpoints
+            if (ctx.path === '/~/emulatorjs/saveState' && ctx.method === 'POST') {
+                return handleSaveState(ctx);
+            }
+            if (ctx.path === '/~/emulatorjs/loadState' && (ctx.method === 'GET' || ctx.method === 'HEAD')) {
+                return handleLoadState(ctx);
+            }
+
+
+            if (ctx.path === '/~/emulatorjs/saveGame' && ctx.method === 'POST') {
+                return handleSaveGame(ctx);
+            }
+            if (ctx.path === '/~/emulatorjs/loadGame' && ctx.method === 'GET') {
+                return handleLoadGame(ctx);
+            }
+
             if (!allowedGets.includes(typeGet)) return;
 
 
@@ -747,38 +949,23 @@ exports.init = function (api) {
                 api.log(`isFile: ${isFile}, extension: ${extension}`)
                 api.log(`compatibleExtensions available: ${compatibleExtensions ? 'yes' : 'no'}`)
 
-                // 1. Se for arquivo compatível, tentar buscar COVER
-                if (isFile && extension && compatibleExtensions.includes(extension)) {
-                    api.log(`File detected. Searching for cover for: ${fileName}`)
-
-                    const coverPathPng = path.join(coversDir, fileName + '.png')
-                    const coverPathPng2 = filePath + '.png';
-
-                    const coverPathJpg = path.join(coversDir, fileName + '.jpg')
-                    const coverPathJpg2 = filePath + '.jpg';
-
-                    const coverPathJpeg = path.join(coversDir, fileName + '.jpeg')
-                    const coverPathJpeg2 = filePath + '.jpeg';
-
-                    const coverPaths = [coverPathPng2, coverPathJpg2, coverPathJpeg2, coverPathPng, coverPathJpg, coverPathJpeg];
-
-                    for (const p of coverPaths) {
-                        api.log(`Checking cover path: ${p}`)
-                        if (fs.existsSync(p)) {
-                            api.log(`Found cover at: ${p}`)
-                            iconPath = p;
-                            ctx.set('Is-Cover', true);
+                // 1. Se for arquivo, tentar buscar COVER primeiro
+                if (isFile && typeGet === 'game_cover') {
+                    api.log(`Searching for cover (is file)`)
+                    const coverExtensions = ['.png', '.jpg', '.jpeg']
+                    for (const ext of coverExtensions) {
+                        const coverPath = path.join(coversDir, fileName + ext)
+                        if (fs.existsSync(coverPath)) {
+                            api.log(`Found cover: ${coverPath}`)
+                            iconPath = coverPath;
                             ctx.set('Is-Icon', false);
-
-
+                            ctx.set('Is-Cover', true);
+                            ctx.set('Is-Mapped-Icon', false);
                             break;
                         }
                     }
-
-                    if (iconPath) {
-                        api.log(`Cover found successfully: ${iconPath}`)
-                    } else {
-                        api.log(`No custom cover found for file: ${fileName}`)
+                    if (!iconPath) {
+                        api.log(`No cover found for file: ${fileName}`)
                     }
                 }
 
@@ -925,12 +1112,15 @@ exports.init = function (api) {
 
             iconTheme: {
                 type: 'select',
-                defaultValue: 'monochrome',
+                defaultValue: 'systematic',
                 label: 'Icon Theme',
                 helperText: 'Choose the visual style for console/system icons',
                 options: {
+                    'Automatic': 'automatic',
                     'Monochrome': 'monochrome',
-                    'Daite (Colorful)': 'daite',
+                    'Daite': 'daite',                   
+                    'FlatUX': 'flatux', 
+                    'Systematic': 'systematic'
                 },
                 frontend: true
             },

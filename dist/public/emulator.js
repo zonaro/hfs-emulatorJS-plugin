@@ -402,19 +402,11 @@
     }
 
     // Setup EmulatorJS callbacks for modal
-    function setupEmulatorCallbacks(gameUrl, core) {
-        // Helper function to convert buffer to base64
-        function b64(buf) {
-            if (buf instanceof Uint8Array) buf = buf.buffer;
-            const bytes = new Uint8Array(buf);
-            const chunkSize = 0x8000;
-            let binary = '';
-            for (let i = 0; i < bytes.length; i += chunkSize) {
-                const sub = bytes.subarray(i, i + chunkSize);
-                binary += String.fromCharCode.apply(null, sub);
-            }
-            return btoa(binary);
-        }
+    async function setupEmulatorCallbacks(gameUrl, core) {
+        console.log('[EmulatorJS] Setting up global variables and callbacks for emulator...')
+
+        HFS.toast('Loading emulator, please wait...', 'info');
+
 
         // Setup global variables for EmulatorJS
         window.EJS_player = '#emulator-game-container'
@@ -424,21 +416,54 @@
         window.EJS_gameName = decodeURIComponent(`${gameUrl.split('/').pop().split('?')[0]}`)
         window.EJS_startOnLoaded = true;
 
+        HFS.toast(`Starting ${core} emulator for ${window.EJS_gameName}`, 'info');
+
         //fullscreen mode
         window.EJS_fullscreenOnLoaded = true;
         window.EJS_alignStartButton = 'center';
 
         window.EJS_pathtodata = `https://cdn.emulatorjs.org/${emuVersion}/data/`
-        window.EJS_threads = true;
+        window.EJS_threads = false;
+        window.EJS_fixedSaveInterval = 5000
 
-        console.log('[EmulatorJS] Global variables set:')
+        const username = HFS.state.username || '';
 
-        Object.entries(window).forEach(([key, value]) => {
-            if (key.startsWith('EJS_')) {
-                console.log(`[EmulatorJS] - ${key}:`, value);
+        EJS_defaultOptions = {
+            'save-state-location': 'browser'
+        }
+
+        // Define callbacks for save/load states and save games
+
+        // Function to convert ArrayBuffer or Uint8Array to base64 without stack overflow
+        function toBase64(data) {
+            if (!data) return '';
+            if (data instanceof ArrayBuffer) {
+                data = new Uint8Array(data);
             }
-        });
-        console.log('[EmulatorJS] Global variables logged. Ready to load emulator.');
+            if (data instanceof Uint8Array) {
+                let binary = '';
+                for (let i = 0; i < data.length; i++) {
+                    binary += String.fromCharCode(data[i]);
+                }
+                return btoa(binary);
+            }
+
+            if (typeof data === 'string') {
+                return data;
+            }
+
+            throw new Error('Unsupported data type for base64 conversion: ' + typeof data);
+        }
+
+        if (username.length > 0) {
+        
+
+            HFS.toast(`User detected: ${username}. Enabling cloud saves.`, 'success');
+
+
+        }
+
+
 
     }
 
