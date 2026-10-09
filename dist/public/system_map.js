@@ -103,14 +103,13 @@ function getPlatformsByExtension(extension) {
 // Helper function to detect platform by arbitrary text, file name or folder
 function possiblePlatforms(text) {
     if (typeof text !== 'string') {
-        console.log('[system_map.js] possiblePlatforms: valor inesperado para text:', text);
         text = '';
     }
 
     text = text.trim().toLowerCase();
 
 
-    detectedSystems = {};
+    let detectedSystems = {};
 
     function addSystemMatch(systemEntry) {
         if (detectedSystems[systemEntry.system]) {
@@ -137,10 +136,6 @@ function possiblePlatforms(text) {
 
     } else {
 
-        console.log(`[system_map.js] possiblePlatforms: analyzing text "${text}"`);
-
-
-
         let tryParts = [];
 
         // check if text is a filename
@@ -152,15 +147,12 @@ function possiblePlatforms(text) {
 
 
             if (name) {
-                console.log(`[system_map.js] possiblePlatforms: detected name "${name}"`);
                 tryParts.push(name);
             }
 
             if (extension) {
-                console.log(`[system_map.js] possiblePlatforms: detected extension "${extension}"`);
-                extPlatforms = getPlatformsByExtension(extension);
+                let extPlatforms = getPlatformsByExtension(extension);
                 if (extPlatforms) {
-                    console.log(`[system_map.js] possiblePlatforms: detected compatible extension "${extension}"`);
                     extPlatforms.forEach(platform => {
                         addSystemMatch(platform);
                     });
@@ -182,16 +174,14 @@ function possiblePlatforms(text) {
             tryParts.forEach(part => {
 
                 [systemEntry.manufacturer, systemEntry.name, systemEntry.system, ...systemEntry.core, ...systemEntry.extensions].forEach(sp => {
-                    systemPart = (sp || '').toLowerCase().split('_').join(' ').split('/').join(' ');
+                    let systemPart = (sp || '').toLowerCase().split('_').join(' ').split('/').join(' ');
                     if (systemPart.length > 0) {
 
 
                         if (part.length > 3 && systemPart.toLowerCase().includes(part)) {
-                            console.log(`Matched part "${part}" with system part "${systemPart}" for system "${systemEntry.system}"`);
                             addSystemMatch(systemEntry);
                         }
                         if (systemPart.toLowerCase() === part.toLowerCase()) {
-                            console.log(`Exact match for part "${part}" with system part "${systemPart}" for system "${systemEntry.system}"`);
                             addSystemMatch(systemEntry);
                         }
                     }
@@ -208,7 +198,6 @@ function possiblePlatforms(text) {
     const finalArray = detectedArray
         .filter(entry => entry[1] > 1)
         .map(entry => entry[0]);
-    console.log('Detected platforms:', finalArray);
     return finalArray;
 
 }
@@ -232,7 +221,7 @@ function tryDetectPlatform(text) {
 // MainIcons: true = only main icons, false = only -content icons, null = all icons
 function getAllIcons(theme, mainIcons) {
     theme = theme || 'monochrome';
-    const icons = [];
+    let icons = [];
     SYSTEM_MAP.forEach(platform => {
         if (platform.icons && Array.isArray(platform.icons)) {
             platform.icons.forEach(iconName => {
@@ -345,12 +334,6 @@ function cleanFilename(filename) {
 
 // Export for Node.js (backend)
 if (typeof module !== 'undefined' && module.exports) {
-    console.log('[system_map.js] Exporting module for Node.js');
-    console.log('[system_map.js] compatibleExtensions type:', typeof compatibleExtensions);
-    console.log('[system_map.js] compatibleExtensions isArray:', Array.isArray(compatibleExtensions));
-    console.log('[system_map.js] compatibleExtensions length:', compatibleExtensions ? compatibleExtensions.length : 'undefined');
-
-
     module.exports = {
         SYSTEM_MAP,
         compatibleExtensions,
@@ -363,6 +346,4 @@ if (typeof module !== 'undefined' && module.exports) {
         getAllSystemsFromFile,
         getAllIcons
     };
-
-    console.log('[system_map.js] Module exported. Keys:', Object.keys(module.exports).join(', '));
 }

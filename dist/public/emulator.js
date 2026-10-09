@@ -1,32 +1,337 @@
 'use strict';
 {
     // EmulatorJS Plugin for HFS
-    console.log('[EmulatorJS] frontend script loaded')
 
     const pluginPublic = HFS.getPluginPublic();
     const config = HFS.getPluginConfig()
 
-    console.log('[EmulatorJS] HFS.getPluginConfig() returned:', config);
 
     const emuVersion = config.emulatorsJsVersion || 'stable'
     const iconTheme = config.iconTheme || 'monochrome';
 
-    console.log('[EmulatorJS] HFS.getPluginPublic() returned:', pluginPublic);
-    console.log('[EmulatorJS] Using EmulatorJS version:', emuVersion);
+    const DEBUG = false
+
+    function debugLog(...args) {
+        if (DEBUG) console.log(...args)
+    }
+
+    const EJS_CDN_BASE = 'https://cdn.emulatorjs.org/'
+    const EJS_LOCAL_DATA_PATH = '/~/retro-emulator/data/'
+
+    const ejsDataSource = config.ejsDataSource || emuVersion || 'stable'
+    const ejsDataCustomUrl = config.ejsDataCustomUrl || ''
+
+    debugLog('[EmulatorJS] frontend loaded', { emuVersion, ejsDataSource, iconTheme })
+
+    function resolveEjsDataPath(source, customUrl) {
+        switch (source) {
+            case 'local':
+                return EJS_LOCAL_DATA_PATH
+            case 'custom': {
+                const url = String(customUrl || '').trim()
+                if (!url) return `${EJS_CDN_BASE}stable/data/`
+                return url.endsWith('/') ? url : url + '/'
+            }
+            case 'latest':
+            case 'nightly':
+                return `${EJS_CDN_BASE}${source}/data/`
+            case 'stable':
+            default:
+                return `${EJS_CDN_BASE}stable/data/`
+        }
+    }
+
+    function enforceLocalEmulatorJs() {
+        if (window.__ejsLocalOnly) return
+        window.__ejsLocalOnly = true
+
+        const cdnHost = '//cdn.emulatorjs.org/'
+        const deadHost = 'https://cdn.blocked.invalid/'
+
+        function notifyBlocked() {
+            if (window.__ejsLocalBlockedNotified) return
+            window.__ejsLocalBlockedNotified = true
+            try {
+                HFS.toast('Local EmulatorJS is selected, but a required file is missing locally. CDN access is disabled.', 'error')
+            } catch (err) {
+                console.error('[EmulatorJS] notifyBlocked failed', err)
+            }
+        }
+
+        function disableCdnFallback() {
+            const emu = window.EJS_emulator
+            if (!emu || !emu.downloadType) return false
+            for (const key in emu.downloadType) {
+                if (emu.downloadType[key]) emu.downloadType[key].cdnFallback = false
+            }
+            return true
+        }
+
+        if (!disableCdnFallback()) {
+            let tries = 0
+            const timer = setInterval(() => {
+                if (disableCdnFallback() || ++tries > 100) clearInterval(timer)
+            }, 100)
+        }
+
+        if (typeof window.fetch === 'function') {
+            const origFetch = window.fetch
+            window.fetch = function (input) {
+                const url = typeof input === 'string' ? input : (input && input.url) || ''
+                if (url.indexOf(cdnHost) !== -1) {
+                    if (url.indexOf('version.json') !== -1) {
+                        return Promise.resolve(new Response(null, { status: 404 }))
+                    }
+                    notifyBlocked()
+                    return Promise.reject(new Error('EmulatorJS CDN disabled (local mode)'))
+                }
+                return origFetch.apply(this, arguments)
+            }
+        }
+
+        if (window.XMLHttpRequest && window.XMLHttpRequest.prototype) {
+            const origOpen = window.XMLHttpRequest.prototype.open
+            window.XMLHttpRequest.prototype.open = function (method, url) {
+                if (String(url).indexOf(cdnHost) !== -1) {
+                    notifyBlocked()
+                    arguments[1] = deadHost
+                }
+                return origOpen.apply(this, arguments)
+            }
+        }
+    }
+
+    const BIOS_MAP = {
+        pcsx_rearmed: 'scph5501.bin',
+        mednafen_psx_hw: 'scph5501.bin',
+        yabause: 'sega_101.bin',
+        mednafen_pce: 'syscard3.pce',
+        mednafen_pcfx: 'pcfx.rom',
+        mednafen_ngp: 'ngp.rom',
+        mednafen_wswan: 'wonderswan.rom',
+        a5200: '5200.rom',
+        opera: 'panafz10.bin',
+        melonds: 'bios7.bin',
+        desmume2015: 'bios7.bin'
+    }
+
+    const GP_2BUTTON = [
+        { type: 'button', text: 'B', id: 'b', location: 'right', right: 75, top: 70, bold: true, input_value: 0 },
+        { type: 'button', text: 'A', id: 'a', location: 'right', right: 5, top: 70, bold: true, input_value: 8 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 5, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'right', right: 75, top: -100, fontSize: 15, block: true, input_value: 2 }
+    ]
+
+    const GP_4BUTTON = [
+        { type: 'button', text: 'X', id: 'x', location: 'right', left: 45, top: 0, bold: true, input_value: 9 },
+        { type: 'button', text: 'Y', id: 'y', location: 'right', left: 5, top: 40, bold: true, input_value: 1 },
+        { type: 'button', text: 'A', id: 'a', location: 'right', left: 85, top: 40, bold: true, input_value: 8 },
+        { type: 'button', text: 'B', id: 'b', location: 'right', left: 45, top: 80, bold: true, input_value: 0 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', top: '25%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 70, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 70, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'L', id: 'l', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 10 },
+        { type: 'button', text: 'R', id: 'r', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 11 }
+    ]
+
+    const GP_AZAHAR = [
+        { type: 'button', text: 'X', id: 'x', location: 'right', left: 45, top: 0, bold: true, input_value: 9 },
+        { type: 'button', text: 'Y', id: 'y', location: 'right', left: 5, top: 40, bold: true, input_value: 1 },
+        { type: 'button', text: 'A', id: 'a', location: 'right', left: 85, top: 40, bold: true, input_value: 8 },
+        { type: 'button', text: 'B', id: 'b', location: 'right', left: 45, top: 80, bold: true, input_value: 0 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', top: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 70, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 70, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'L', id: 'l', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 10 },
+        { type: 'button', text: 'R', id: 'r', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 11 }
+    ]
+
+    const GP_MGBA = [
+        { type: 'button', text: 'B', id: 'b', location: 'right', right: 75, top: 70, bold: true, input_value: 0 },
+        { type: 'button', text: 'A', id: 'a', location: 'right', right: 5, top: 70, bold: true, input_value: 8 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', top: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 70, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 70, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'L', id: 'l', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 10 },
+        { type: 'button', text: 'R', id: 'r', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 11 }
+    ]
+
+    const GP_N64 = [
+        { type: 'button', text: 'B', id: 'b', location: 'right', left: 10, top: 95, input_value: 1, bold: true },
+        { type: 'button', text: 'A', id: 'a', location: 'right', left: 80, top: 95, input_value: 0, bold: true },
+        { type: 'zone', id: 'stick', location: 'left', left: '50%', top: '100%', joystickInput: true, inputValues: [16, 17, 18, 19] },
+        { type: 'zone', id: 'dpad', location: 'left', left: '50%', top: '0%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Start', id: 'start', location: 'top', right: 80, top: -40, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'L', id: 'l', block: true, location: 'top', left: 10, top: -40, bold: true, input_value: 10 },
+        { type: 'button', text: 'R', id: 'r', block: true, location: 'top', right: 10, top: -40, bold: true, input_value: 11 },
+        { type: 'button', text: 'Z', id: 'z', block: true, location: 'top', left: 80, top: -40, bold: true, input_value: 12 },
+        { fontSize: 20, type: 'button', text: 'CU', id: 'cu', joystickInput: true, location: 'right', left: 45, top: -65, input_value: 23 },
+        { fontSize: 20, type: 'button', text: 'CD', id: 'cd', joystickInput: true, location: 'right', left: 45, top: 15, input_value: 22 },
+        { fontSize: 20, type: 'button', text: 'CL', id: 'cl', joystickInput: true, location: 'right', left: 5, top: -25, input_value: 21 },
+        { fontSize: 20, type: 'button', text: 'CR', id: 'cr', joystickInput: true, location: 'right', left: 85, top: -25, input_value: 20 }
+    ]
+
+    const GP_BEETLE_VB = [
+        { type: 'button', text: 'B', id: 'b', location: 'right', right: 75, top: 70, bold: true, input_value: 0 },
+        { type: 'button', text: 'A', id: 'a', location: 'right', right: 5, top: 70, bold: true, input_value: 8 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', top: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 70, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 70, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'L', id: 'l', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 10 },
+        { type: 'button', text: 'R', id: 'r', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 11 }
+    ]
+
+    const GP_GENESIS = [
+        { type: 'button', text: 'A', id: 'a', location: 'right', right: 90, top: 100, bold: true, input_value: 0 },
+        { type: 'button', text: 'B', id: 'b', location: 'right', right: 40, top: 70, bold: true, input_value: 8 },
+        { type: 'button', text: 'C', id: 'c', location: 'right', right: -10, top: 40, bold: true, input_value: 11 },
+        { type: 'button', text: 'X', id: 'x', location: 'right', right: 90, top: 30, bold: true, input_value: 1 },
+        { type: 'button', text: 'Y', id: 'y', location: 'right', right: 40, top: 0, bold: true, input_value: 9 },
+        { type: 'button', text: 'Z', id: 'z', location: 'right', right: -10, top: -30, bold: true, input_value: 10 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'L', id: 'l', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 12 },
+        { type: 'button', text: 'R', id: 'r', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 13 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 70, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 70, top: -100, fontSize: 15, block: true, input_value: 3 }
+    ]
+
+    const GP_YABAUSE = [
+        { type: 'button', text: 'A', id: 'a', location: 'right', right: 90, top: 100, bold: true, input_value: 0 },
+        { type: 'button', text: 'B', id: 'b', location: 'right', right: 40, top: 70, bold: true, input_value: 8 },
+        { type: 'button', text: 'C', id: 'c', location: 'right', right: -10, top: 40, bold: true, input_value: 10 },
+        { type: 'button', text: 'X', id: 'x', location: 'right', right: 90, top: 30, bold: true, input_value: 1 },
+        { type: 'button', text: 'Y', id: 'y', location: 'right', right: 40, top: 0, bold: true, input_value: 9 },
+        { type: 'button', text: 'Z', id: 'z', location: 'right', right: -10, top: -30, bold: true, input_value: 11 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'L', id: 'l', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 12 },
+        { type: 'button', text: 'R', id: 'r', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 13 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 70, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 70, top: -100, fontSize: 15, block: true, input_value: 3 }
+    ]
+
+    const GP_PSX = [
+        { type: 'button', text: '△', id: 'triangle', location: 'right', left: 40, bold: true, input_value: 9 },
+        { type: 'button', text: '□', id: 'square', location: 'right', top: 40, bold: true, input_value: 1 },
+        { type: 'button', text: '○', id: 'circle', location: 'right', left: 80, top: 40, bold: true, input_value: 8 },
+        { type: 'button', text: '✕', id: 'cross', location: 'right', left: 40, top: 80, bold: true, input_value: 0 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', top: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 70, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 70, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'L1', id: 'l1', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 10 },
+        { type: 'button', text: 'R1', id: 'r1', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 11 }
+    ]
+
+    const GP_PPSSPP = [
+        { type: 'button', text: '△', id: 'triangle', location: 'right', left: 40, bold: true, input_value: 9 },
+        { type: 'button', text: '□', id: 'square', location: 'right', top: 40, bold: true, input_value: 1 },
+        { type: 'button', text: '○', id: 'circle', location: 'right', left: 80, top: 40, bold: true, input_value: 8 },
+        { type: 'button', text: '✕', id: 'cross', location: 'right', left: 40, top: 80, bold: true, input_value: 0 },
+        { type: 'zone', id: 'stick', location: 'left', left: '50%', top: '50%', joystickInput: true, inputValues: [16, 17, 18, 19] },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', top: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 70, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 70, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'L', id: 'l', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 10 },
+        { type: 'button', text: 'R', id: 'r', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 11 }
+    ]
+
+    const GP_STELLA = [
+        { type: 'button', text: '', id: 'button_1', location: 'right', right: 40, top: 70, bold: true, input_value: 0 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Reset', id: 'reset', location: 'right', right: 5, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'right', right: 75, top: -100, fontSize: 15, block: true, input_value: 2 }
+    ]
+
+    const GP_A5200 = [
+        { type: 'zone', id: 'stick', location: 'left', left: '50%', top: '50%', joystickInput: true, inputValues: [16, 17, 18, 19] },
+        { type: 'button', text: '1', id: 'button_1', location: 'right', right: 75, top: 70, bold: true, input_value: 0 },
+        { type: 'button', text: '2', id: 'button_2', location: 'right', right: 5, top: 70, bold: true, input_value: 8 },
+        { type: 'button', text: 'Reset', id: 'reset', location: 'right', right: 5, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'right', right: 75, top: -100, fontSize: 15, block: true, input_value: 2 }
+    ]
+
+    const GP_PROSYSYSTEM = [
+        { type: 'button', text: '1', id: 'button_1', location: 'right', right: 75, top: 70, bold: true, input_value: 0 },
+        { type: 'button', text: '2', id: 'button_2', location: 'right', right: 5, top: 70, bold: true, input_value: 8 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Reset', id: 'reset', location: 'right', right: 75, top: -100, fontSize: 15, block: true, input_value: 9 },
+        { type: 'button', text: 'Pause', id: 'pause', location: 'right', right: 5, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'left', left: 5, top: -100, fontSize: 15, block: true, input_value: 2 }
+    ]
+
+    const GP_ARCADE = [
+        { type: 'button', text: '1', id: 'btn1', location: 'right', right: 90, top: 100, bold: true, input_value: 1 },
+        { type: 'button', text: '2', id: 'btn2', location: 'right', right: 40, top: 70, bold: true, input_value: 0 },
+        { type: 'button', text: '3', id: 'btn3', location: 'right', right: -10, top: 40, bold: true, input_value: 8 },
+        { type: 'button', text: '4', id: 'btn4', location: 'right', right: 90, top: 30, bold: true, input_value: 10 },
+        { type: 'button', text: '5', id: 'btn5', location: 'right', right: 40, top: 0, bold: true, input_value: 9 },
+        { type: 'button', text: '6', id: 'btn6', location: 'right', right: -10, top: -30, bold: true, input_value: 11 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Coin', id: 'coin', location: 'right', right: 75, top: -100, fontSize: 15, block: true, input_value: 2 },
+        { type: 'button', text: 'Start', id: 'start', location: 'right', right: 5, top: -100, fontSize: 15, block: true, input_value: 3 }
+    ]
+
+    const GP_MEDNAFEN_PCE = [
+        { type: 'button', text: 'II', id: 'ii', location: 'right', right: 75, top: 70, bold: true, input_value: 0 },
+        { type: 'button', text: 'I', id: 'i', location: 'right', right: 5, top: 70, bold: true, input_value: 8 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Run', id: 'run', location: 'right', right: 5, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'right', right: 75, top: -100, fontSize: 15, block: true, input_value: 2 }
+    ]
+
+    const GP_MEDNAFEN_PCFX = [
+        { type: 'button', text: 'I', id: 'i', location: 'right', right: 90, top: 70, bold: true, input_value: 0 },
+        { type: 'button', text: 'II', id: 'ii', location: 'right', right: 40, top: 40, bold: true, input_value: 8 },
+        { type: 'button', text: 'III', id: 'iii', location: 'right', right: -10, top: 10, bold: true, input_value: 1 },
+        { type: 'button', text: 'IV', id: 'iv', location: 'right', right: 90, top: 10, bold: true, input_value: 9 },
+        { type: 'button', text: 'V', id: 'v', location: 'right', right: 40, top: -20, bold: true, input_value: 10 },
+        { type: 'button', text: 'VI', id: 'vi', location: 'right', right: -10, top: -50, bold: true, input_value: 11 },
+        { type: 'dpad', id: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+        { type: 'button', text: 'Run', id: 'run', location: 'right', right: 5, top: -100, fontSize: 15, block: true, input_value: 3 },
+        { type: 'button', text: 'Select', id: 'select', location: 'right', right: 75, top: -100, fontSize: 15, block: true, input_value: 2 }
+    ]
+
+    const VIRTUAL_GAMEPAD_MAP = {
+        fceumm: GP_2BUTTON,
+        nestopia: GP_2BUTTON,
+        gambatte: GP_2BUTTON,
+        handy: GP_2BUTTON,
+        mednafen_ngp: GP_2BUTTON,
+        mednafen_wswan: GP_2BUTTON,
+        snes9x: GP_4BUTTON,
+        melonds: GP_4BUTTON,
+        desmume2015: GP_4BUTTON,
+        azahar: GP_AZAHAR,
+        mgba: GP_MGBA,
+        beetle_vb: GP_BEETLE_VB,
+        mupen64plus_next: GP_N64,
+        parallel_n64: GP_N64,
+        genesis_plus_gx: GP_GENESIS,
+        picodrive: GP_GENESIS,
+        yabause: GP_YABAUSE,
+        pcsx_rearmed: GP_PSX,
+        mednafen_psx_hw: GP_PSX,
+        ppsspp: GP_PPSSPP,
+        stella2014: GP_STELLA,
+        a5200: GP_A5200,
+        prosystem: GP_PROSYSYSTEM,
+        fbneo: GP_ARCADE,
+        mame2003_plus: GP_ARCADE,
+        mednafen_pce: GP_MEDNAFEN_PCE,
+        mednafen_pcfx: GP_MEDNAFEN_PCFX
+    }
+
 
 
 
     // Function to search covers from IGDB
     async function openCoverSearchModal(entry) {
-        console.log('[EmulatorJS Cover Modal] Starting openCoverSearchModal for entry:', entry.name)
 
         const { dialogLib } = HFS
-        console.log('[EmulatorJS Cover Modal] dialogLib:', !!dialogLib)
 
 
 
         const cleanedName = cleanFilename(entry.name)
-        console.log('[EmulatorJS Cover Modal] Cleaned filename:', cleanedName)
 
         let searchTimeout
         let selectedCover = null
@@ -42,15 +347,12 @@
         resultsList.style.padding = '10px'
         resultsList.style.borderRadius = '4px'
         resultsList.style.backgroundColor = '#f9f9f9'
-        console.log('[EmulatorJS Cover Modal] resultsList created:', !!resultsList)
 
         async function performSearch(gameName) {
-            console.log('[EmulatorJS Cover Modal] performSearch called with:', gameName)
             try {
                 resultsList.innerHTML = '<p style="text-align:center; color: #999;">Searching...</p>'
 
                 const response = await HFS.customRestCall('searchCovers', { romName: gameName })
-                console.log('[EmulatorJS Cover Modal] Search response:', response)
 
                 if (!response.success) {
                     resultsList.innerHTML = `<p style="color:red">Error: ${response.error}</p>`
@@ -74,7 +376,6 @@
                     return
                 }
 
-                console.log('[EmulatorJS Cover Modal] Found results:', response.results.length)
                 resultsList.innerHTML = ''
                 response.results.forEach(game => {
                     // Create item as real DOM element
@@ -98,7 +399,6 @@
                     })
 
                     item.addEventListener('click', async () => {
-                        console.log('[EmulatorJS Cover Modal] Selected game:', game.name)
                         selectedCover = game
                         // Highlight selected
                         Array.from(resultsList.children).forEach(child => {
@@ -109,7 +409,6 @@
                         item.style.borderColor = '#1976d2'
 
                         // Auto-download the cover
-                        console.log('[EmulatorJS Cover Modal] Auto-downloading cover for:', game.name)
                         try {
                             item.style.opacity = '0.6'
                             item.style.pointerEvents = 'none'
@@ -121,10 +420,8 @@
                                 romPath: entry.uri
                             })
 
-                            console.log('[EmulatorJS Cover Modal] setCover result:', result)
                             if (result.success) {
                                 HFS.toast('Cover downloaded successfully!', 'success')
-                                console.log('[EmulatorJS Cover Modal] Closing dialog')
                                 dialog.close()
 
                             } else {
@@ -183,22 +480,18 @@
         inputElement.addEventListener('input', (e) => {
             clearTimeout(searchTimeout)
             const query = e.target.value
-            console.log('[EmulatorJS Cover Modal] Input changed:', query)
             if (query.length > 2) {
                 searchTimeout = setTimeout(() => performSearch(query), 500)
             } else {
                 resultsList.innerHTML = ''
             }
         })
-        console.log('[EmulatorJS Cover Modal] inputElement created:', !!inputElement)
 
         // Auto-search with cleaned name if it's long enough
         if (cleanedName.length > 2) {
-            console.log('[EmulatorJS Cover Modal] Auto-searching with cleaned name:', cleanedName)
             setTimeout(() => performSearch(cleanedName), 300)
         }
 
-        console.log('[EmulatorJS Cover Modal] Creating dialog...')
         dialog = dialogLib.newDialog({
             title: 'Search Game Cover',
             className: 'emulatorjs-cover-modal',
@@ -206,7 +499,6 @@
                 {
                     text: 'Download & Set Cover',
                     onclick: async () => {
-                        console.log('[EmulatorJS Cover Modal] Download button clicked, selectedCover:', !!selectedCover)
                         if (!selectedCover) {
                             HFS.toast('Please select a cover', 'warning')
                             return
@@ -220,7 +512,6 @@
                                 romPath: entry.uri
                             })
 
-                            console.log('[EmulatorJS Cover Modal] setCover result:', result)
                             if (result.success) {
                                 HFS.toast('Cover downloaded successfully!', 'success')
                                 dialog.close()
@@ -236,27 +527,20 @@
                 {
                     text: 'Cancel',
                     onclick: () => {
-                        console.log('[EmulatorJS Cover Modal] Cancel clicked')
                         dialog.close()
                     }
                 }
             ]
         })
-        console.log('[EmulatorJS Cover Modal] Dialog created:', !!dialog)
 
         // Find the dialog element and add content
         setTimeout(() => {
-            console.log('[EmulatorJS Cover Modal] setTimeout callback - looking for dialog element')
             const dialogElement = document.querySelector('[role="dialog"]')
-            console.log('[EmulatorJS Cover Modal] dialogElement found:', !!dialogElement)
 
             if (dialogElement) {
                 const contentArea = dialogElement.querySelector('main') || dialogElement.querySelector('[role="presentation"]') || dialogElement.querySelector('.dialog-content')
-                console.log('[EmulatorJS Cover Modal] contentArea found:', !!contentArea)
-                console.log('[EmulatorJS Cover Modal] contentArea children count:', contentArea?.children.length)
 
                 if (contentArea) {
-                    console.log('[EmulatorJS Cover Modal] Adding content to contentArea')
                     // Create a real DOM container (not React virtual)
                     const container = document.createElement('div')
                     container.style.padding = '15px'
@@ -276,11 +560,9 @@
                     // Add results list
                     container.appendChild(resultsList)
 
-                    console.log('[EmulatorJS Cover Modal] container created:', !!container)
                     // Insert container at the beginning of contentArea (before any existing children like buttons)
                     contentArea.insertBefore(container, contentArea.firstChild)
                     inputElement.focus()
-                    console.log('[EmulatorJS Cover Modal] container inserted at beginning and input focused')
                 } else {
                     console.warn('[EmulatorJS Cover Modal] contentArea not found')
                 }
@@ -294,7 +576,6 @@
 
 
     function playGameInEmulator(gameUrl, core) {
-        console.log('[EmulatorJS] playGameInEmulator called with:', gameUrl, core)
 
         // Ensure gameUrl is absolute (with protocol and domain)
         if (!gameUrl.startsWith('http://') && !gameUrl.startsWith('https://')) {
@@ -335,26 +616,22 @@
             className: 'emulatorjs-game-modal',
             closable: true,
             onClose: () => {
-                console.log('[EmulatorJS] Dialog closing, destroying emulator...')
                 window.location.reload(); // Simple way to stop and unload the emulator
             },
             buttons: [
                 {
                     text: 'Close',
                     onclick: () => {
-                        console.log('[EmulatorJS] Closing emulator dialog')
                         dialog.close()
                     }
                 }
             ]
         })
 
-        console.log('[EmulatorJS] Dialog created:', !!dialog)
 
         // Add content to dialog after it's rendered
         setTimeout(() => {
             const dialogElement = document.querySelector('[role="dialog"]')
-            console.log('[EmulatorJS] dialogElement found:', !!dialogElement)
 
             if (dialogElement) {
                 // Apply modal size
@@ -364,7 +641,6 @@
                 dialogElement.style.maxHeight = '75vh'
 
                 const contentArea = dialogElement.querySelector('main') || dialogElement.querySelector('[role="presentation"]') || dialogElement.querySelector('.dialog-content')
-                console.log('[EmulatorJS] contentArea found:', !!contentArea)
 
                 if (contentArea) {
                     // Style content area
@@ -378,19 +654,18 @@
                     contentArea.insertBefore(gameContainer, contentArea.firstChild)
 
                     // Now load the emulator
-                    console.log('[EmulatorJS] Loading emulator in dialog...')
 
 
 
-                    // Setup EmulatorJS callbacks
-                    setupEmulatorCallbacks(gameUrl, core)
+                    setupEmulator(gameUrl, core)
 
                     // Load EmulatorJS loader dynamically
                     emulatorScript = document.createElement('script')
                     emulatorScript.src = window.EJS_pathtodata + 'loader.js'
-                    // emulatorScript.crossOrigin = 'anonymous'
-                    emulatorScript.onload = () => console.log('[EmulatorJS] loader.js loaded in dialog')
-                    emulatorScript.onerror = (e) => console.error('[EmulatorJS] Failed to load loader.js', e)
+                    emulatorScript.onerror = (e) => {
+                        console.error('[EmulatorJS] Failed to load loader.js', e)
+                        HFS.toast('Failed to load EmulatorJS loader. Check your data source setting.', 'error')
+                    }
                     document.head.appendChild(emulatorScript)
                 } else {
                     console.warn('[EmulatorJS] contentArea not found')
@@ -401,81 +676,170 @@
         }, 100)
     }
 
-    // Setup EmulatorJS callbacks for modal
-    async function setupEmulatorCallbacks(gameUrl, core) {
-        console.log('[EmulatorJS] Setting up global variables and callbacks for emulator...')
+    function setupEmulator(gameUrl, core) {
+        const cleanUrl = gameUrl.split('?')[0]
+        const gameName = decodeURIComponent(cleanUrl.split('/').pop())
+        const romFolder = cleanUrl.slice(0, cleanUrl.lastIndexOf('/') + 1)
 
-        HFS.toast('Loading emulator, please wait...', 'info');
-
-
-        // Setup global variables for EmulatorJS
         window.EJS_player = '#emulator-game-container'
         window.EJS_gameUrl = gameUrl
         window.EJS_core = core
-        //decode game name from URI
-        window.EJS_gameName = decodeURIComponent(`${gameUrl.split('/').pop().split('?')[0]}`)
-        window.EJS_startOnLoaded = true;
-
-        HFS.toast(`Starting ${core} emulator for ${window.EJS_gameName}`, 'info');
-
-        //fullscreen mode
-        window.EJS_fullscreenOnLoaded = true;
-        window.EJS_alignStartButton = 'center';
-
-        window.EJS_pathtodata = `https://cdn.emulatorjs.org/${emuVersion}/data/`
-        window.EJS_threads = false;
+        window.EJS_gameName = gameName
+        window.EJS_startOnLoaded = true
+        window.EJS_fullscreenOnLoaded = true
+        window.EJS_alignStartButton = 'center'
+        window.EJS_threads = false
         window.EJS_fixedSaveInterval = 5000
 
-        const username = HFS.state.username || '';
+        window.EJS_pathtodata = resolveEjsDataPath(ejsDataSource, ejsDataCustomUrl)
 
-        EJS_defaultOptions = {
-            'save-state-location': 'browser'
+        if (ejsDataSource === 'local') {
+            window.EJS_cacheConfig = { enabled: false }
+            enforceLocalEmulatorJs()
         }
 
-        // Define callbacks for save/load states and save games
-
-        // Function to convert ArrayBuffer or Uint8Array to base64 without stack overflow
-        function toBase64(data) {
-            if (!data) return '';
-            if (data instanceof ArrayBuffer) {
-                data = new Uint8Array(data);
-            }
-            if (data instanceof Uint8Array) {
-                let binary = '';
-                for (let i = 0; i < data.length; i++) {
-                    binary += String.fromCharCode(data[i]);
-                }
-                return btoa(binary);
-            }
-
-            if (typeof data === 'string') {
-                return data;
-            }
-
-            throw new Error('Unsupported data type for base64 conversion: ' + typeof data);
+        const biosFile = BIOS_MAP[core]
+        if (biosFile) {
+            window.EJS_biosUrl = romFolder + biosFile + '?dl'
+        } else {
+            delete window.EJS_biosUrl
         }
 
+        if (VIRTUAL_GAMEPAD_MAP[core]) {
+            window.EJS_VirtualGamepadSettings = VIRTUAL_GAMEPAD_MAP[core]
+        } else {
+            delete window.EJS_VirtualGamepadSettings
+        }
+
+        const isFirefox = navigator.userAgent.toLowerCase().includes('firefox')
+        window.EJS_defaultOptions = {
+            'save-state-location': 'browser',
+            'audio-latency': isFirefox ? '100' : '32'
+        }
+
+        const username = HFS.state.username || ''
         if (username.length > 0) {
-        
-
-            HFS.toast(`User detected: ${username}. Enabling cloud saves.`, 'success');
-
-
+            HFS.toast(`User detected: ${username}. Enabling cloud saves.`, 'success')
         }
 
+        HFS.toast(`Starting ${core} emulator for ${gameName}`, 'info')
+        debugLog('[EmulatorJS] emulator setup', { core, pathtodata: window.EJS_pathtodata, biosFile })
+    }
 
+    function toBase64(data) {
+        if (!data) return ''
+        if (data instanceof ArrayBuffer) {
+            data = new Uint8Array(data)
+        }
+        if (data instanceof Uint8Array) {
+            let binary = ''
+            for (let i = 0; i < data.length; i++) {
+                binary += String.fromCharCode(data[i])
+            }
+            return btoa(binary)
+        }
+        if (typeof data === 'string') {
+            return data
+        }
+        throw new Error('Unsupported data type for base64 conversion: ' + typeof data)
+    }
 
+    function showCoreChooser(entry, systemInfo, cores, romUri) {
+        const previous = document.getElementById('emulatorjs-core-chooser')
+        if (previous) previous.remove()
+
+        const gameName = entry.name || decodeURIComponent(String(romUri || '').split('/').pop() || '')
+
+        const overlay = document.createElement('div')
+        overlay.id = 'emulatorjs-core-chooser'
+        overlay.style.position = 'fixed'
+        overlay.style.inset = '0'
+        overlay.style.background = 'rgba(0,0,0,.5)'
+        overlay.style.display = 'flex'
+        overlay.style.alignItems = 'center'
+        overlay.style.justifyContent = 'center'
+        overlay.style.zIndex = '100000'
+
+        const panel = document.createElement('div')
+        panel.style.background = '#1c1f23'
+        panel.style.color = '#e6e8ea'
+        panel.style.borderRadius = '10px'
+        panel.style.padding = '1.1em 1.2em'
+        panel.style.minWidth = '260px'
+        panel.style.maxWidth = '90vw'
+        panel.style.boxShadow = '0 10px 30px rgba(0,0,0,.6)'
+        panel.style.font = '15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif'
+
+        const heading = document.createElement('div')
+        heading.textContent = `Play ${gameName} (${systemInfo.name || systemInfo.system})`
+        heading.style.fontWeight = '600'
+        heading.style.marginBottom = '.7em'
+        panel.appendChild(heading)
+
+        function close() {
+            document.removeEventListener('keydown', onKey)
+            overlay.remove()
+        }
+        function onKey(e) {
+            if (e.key === 'Escape') close()
+        }
+        document.addEventListener('keydown', onKey)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close()
+        })
+
+        cores.forEach((coreId) => {
+            const btn = document.createElement('button')
+            btn.type = 'button'
+            btn.textContent = coreId
+            btn.style.display = 'block'
+            btn.style.width = '100%'
+            btn.style.textAlign = 'left'
+            btn.style.margin = '0 0 .4em'
+            btn.style.padding = '.5em .7em'
+            btn.style.borderRadius = '6px'
+            btn.style.border = '1px solid #2c3036'
+            btn.style.background = '#121417'
+            btn.style.color = 'inherit'
+            btn.style.cursor = 'pointer'
+            btn.style.font = 'inherit'
+            btn.addEventListener('mouseenter', () => { btn.style.borderColor = '#4d9bf0' })
+            btn.addEventListener('mouseleave', () => { btn.style.borderColor = '#2c3036' })
+            btn.addEventListener('click', () => {
+                close()
+                playGameInEmulator(romUri, coreId)
+            })
+            panel.appendChild(btn)
+        })
+
+        const cancel = document.createElement('button')
+        cancel.type = 'button'
+        cancel.textContent = 'Cancel'
+        cancel.style.marginTop = '.5em'
+        cancel.style.padding = '.4em .8em'
+        cancel.style.borderRadius = '6px'
+        cancel.style.border = '1px solid #2c3036'
+        cancel.style.background = 'transparent'
+        cancel.style.color = 'inherit'
+        cancel.style.cursor = 'pointer'
+        cancel.style.font = 'inherit'
+        cancel.addEventListener('click', close)
+        panel.appendChild(cancel)
+
+        overlay.appendChild(panel)
+        document.body.appendChild(overlay)
+
+        const first = panel.querySelector('button')
+        if (first) first.focus()
     }
 
     // Function to display game information modal
     async function openGameInfoModal(entry) {
-        console.log('[EmulatorJS Game Info] Starting openGameInfoModal for entry:', entry.name)
 
         const { dialogLib } = HFS
 
 
         const cleanedName = cleanFilename(entry.name)
-        console.log('[EmulatorJS Game Info] Cleaned filename:', cleanedName)
 
         let selectedGame = null
         let dialog = null
@@ -491,12 +855,10 @@
         gamesList.style.backgroundColor = '#f9f9f9'
 
         async function performSearch(gameName) {
-            console.log('[EmulatorJS Game Info] performSearch called with:', gameName)
             try {
                 gamesList.innerHTML = '<p style="text-align:center; color: #999;">Searching...</p>'
 
                 const response = await HFS.customRestCall('searchGameInfo', { gameName: gameName })
-                console.log('[EmulatorJS Game Info] Search response:', response)
 
                 if (!response.success) {
                     gamesList.innerHTML = `<p style="color:red">Error: ${response.error}</p>`
@@ -520,7 +882,6 @@
                     return
                 }
 
-                console.log('[EmulatorJS Game Info] Found results:', response.results.length)
                 gamesList.innerHTML = ''
                 let games = response.results;
 
@@ -559,7 +920,6 @@
                     })
 
                     item.addEventListener('click', () => {
-                        console.log('[EmulatorJS Game Info] Selected game:', game.name)
                         selectedGame = game
                         Array.from(gamesList.children).forEach(child => {
                             child.style.backgroundColor = '#fff'
@@ -569,18 +929,15 @@
                         item.style.borderColor = '#1976d2'
 
                         // Auto-save the game info
-                        console.log('[EmulatorJS Game Info] Auto-saving game info for:', entry.name)
                         HFS.customRestCall('saveGameInfo', {
                             romName: entry.name,
                             gameInfo: game
                         }).then(async result => {
-                            console.log('[EmulatorJS Game Info] Save result:', result)
                             if (result.success) {
                                 HFS.toast('Game info saved!', 'success')
 
                                 // Download cover if it doesn't exist
                                 if (game.coverUrl) {
-                                    console.log('[EmulatorJS Game Info] Downloading cover for:', game.name)
                                     try {
                                         const setCoverResult = await HFS.customRestCall('setCover', {
                                             romName: entry.name,
@@ -591,10 +948,8 @@
                                         })
 
                                         if (setCoverResult.success) {
-                                            console.log('[EmulatorJS Game Info] Cover downloaded successfully')
                                             HFS.toast('Cover downloaded successfully!', 'success')
                                         } else {
-                                            console.log('[EmulatorJS Game Info] Cover already exists or failed to download:', setCoverResult.error)
                                         }
                                     } catch (err) {
                                         console.error('[EmulatorJS Game Info] Error downloading cover:', err)
@@ -723,7 +1078,6 @@
         inputElement.addEventListener('input', (e) => {
             clearTimeout(searchTimeout)
             const query = e.target.value
-            console.log('[EmulatorJS Game Info] Input changed:', query)
             if (query.length > 2) {
                 searchTimeout = setTimeout(() => performSearch(query), 500)
             } else {
@@ -733,11 +1087,9 @@
 
         // Auto-search with cleaned name
         if (cleanedName.length > 2) {
-            console.log('[EmulatorJS Game Info] Auto-searching with cleaned name:', cleanedName)
             setTimeout(() => performSearch(cleanedName), 300)
         }
 
-        console.log('[EmulatorJS Game Info] Creating dialog...')
         dialog = dialogLib.newDialog({
             title: 'Game Information',
             className: 'emulatorjs-game-info-modal',
@@ -745,27 +1097,21 @@
                 {
                     text: 'Close',
                     onclick: () => {
-                        console.log('[EmulatorJS Game Info] Close clicked')
                         dialog.close()
                     }
                 }
             ]
         })
 
-        console.log('[EmulatorJS Game Info] Dialog created:', !!dialog)
 
         // Find the dialog element and add content
         setTimeout(() => {
-            console.log('[EmulatorJS Game Info] setTimeout callback - looking for dialog element')
             const dialogElement = document.querySelector('[role="dialog"]')
-            console.log('[EmulatorJS Game Info] dialogElement found:', !!dialogElement)
 
             if (dialogElement) {
                 const contentArea = dialogElement.querySelector('main') || dialogElement.querySelector('[role="presentation"]') || dialogElement.querySelector('.dialog-content')
-                console.log('[EmulatorJS Game Info] contentArea found:', !!contentArea)
 
                 if (contentArea) {
-                    console.log('[EmulatorJS Game Info] Adding content to contentArea')
                     const container = document.createElement('div')
                     container.style.padding = '15px'
                     container.style.overflowY = 'auto'
@@ -781,10 +1127,8 @@
                     container.appendChild(inputElement)
                     container.appendChild(gamesList)
 
-                    console.log('[EmulatorJS Game Info] container created:', !!container)
                     contentArea.insertBefore(container, contentArea.firstChild)
                     inputElement.focus()
-                    console.log('[EmulatorJS Game Info] container inserted and input focused')
                 } else {
                     console.warn('[EmulatorJS Game Info] contentArea not found')
                 }
@@ -807,14 +1151,12 @@
 
 
         // Debug: logs when fileMenu is called
-        console.log('[EmulatorJS] fileMenu called for', filename, 'ext=', ext, 'detected systems=', allSystems.length)
 
 
 
         if (!allSystems || allSystems.length === 0 || entry.isFolder) return
 
 
-        console.log('[EmulatorJS] Detected systems for', filename, ':', allSystems)
 
         try {
 
@@ -920,7 +1262,6 @@
                 icon: srcCover,
 
                 onClick: async () => {
-                    console.log('[EmulatorJS] View cover button clicked!')
 
                     try {
 
@@ -985,7 +1326,6 @@
                     subLabel: 'View IGDB details',
                     icon: 'info',
                     onClick: async () => {
-                        console.log('[EmulatorJS] Game info button clicked!')
                         await openGameInfoModal(entry)
                         return true
                     }
@@ -998,7 +1338,6 @@
                     subLabel: 'Search IGDB',
                     icon: 'image',
                     onClick: async () => {
-                        console.log('[EmulatorJS] Set cover button clicked!')
                         await openCoverSearchModal(entry)
                         return true
                     }
@@ -1013,7 +1352,6 @@
                     subLabel: 'Delete cover image',
                     icon: 'delete',
                     onClick: async () => {
-                        console.log('[EmulatorJS] Remove cover button clicked!')
 
                         // Ask for confirmation
                         if (!confirm(`Remove cover for "${entry.name}"?`)) {
@@ -1051,34 +1389,38 @@
 
             // Create a Play button for each compatible core for the detected systems
             allSystems.forEach((systemInfo, sysIndex) => {
-                // cores can be defined on the systemInfo (array of core ids); fallback to system id
                 const cores = (Array.isArray(systemInfo.core) && systemInfo.core.length) ? systemInfo.core : []
+                if (cores.length === 0) return
 
-                // add a separator for this system group
+                const romUri = entry.uri || entry.url || entry.path || entry.name
+                const platIcon = detectBestIcon(systemInfo.system, iconTheme)
+                const icon = platIcon ? `${pluginPublic}${platIcon.path}` : '🕹️'
+
                 menu.unshift({ id: `separator-emulatorjs-play-${sysIndex}`, type: 'separator' })
-                cores.forEach(coreId => {
 
-                    const platIcon = detectBestIcon(systemInfo.system, iconTheme);
-                    const playItem = {
-                        id: `play-${systemInfo.system}-${coreId}`,
+                if (cores.length === 1) {
+                    menu.unshift({
+                        id: `play-${systemInfo.system}-${cores[0]}`,
                         label: 'Play',
-                        subLabel: `${systemInfo.name} · ${coreId}`,
-                        icon: platIcon ? `${pluginPublic}${platIcon.path}` : '🕹️',
+                        subLabel: `${systemInfo.name} · ${cores[0]}`,
+                        icon,
                         onClick: () => {
-                            console.log(`[EmulatorJS] Play button clicked for ${systemInfo.name} (core=${coreId})!`)
-                            console.log('[EmulatorJS] - entry.uri:', entry.uri)
-                            console.log('[EmulatorJS] - entry:', entry)
-                            console.log('[EmulatorJS] - system:', systemInfo.system)
-                            console.log('[EmulatorJS] - core:', coreId)
-
-                            // Open the game with the specific core selected
-                            playGameInEmulator(entry.uri || entry.url || entry.path || entry.name, coreId)
+                            playGameInEmulator(romUri, cores[0])
                             return true
                         }
-                    }
-
-                    menu.unshift(playItem)
-                })
+                    })
+                } else {
+                    menu.unshift({
+                        id: `play-${systemInfo.system}`,
+                        label: 'Play',
+                        subLabel: `${systemInfo.name} · choose core`,
+                        icon,
+                        onClick: () => {
+                            showCoreChooser(entry, systemInfo, cores, romUri)
+                            return true
+                        }
+                    })
+                }
             })
 
         } catch (err) {
@@ -1089,12 +1431,10 @@
 
 
 
-    console.log('[EmulatorJS] Plugin loaded successfully')
 
     // Função para detectar quais consoles estão presentes na pasta
     async function detectFolderConsoles(folderUri) {
         try {
-            console.log('[EmulatorJS] Detecting consoles in folder:', folderUri)
 
             const detectedConsoles = new Set()
 
@@ -1122,7 +1462,6 @@
 
 
             const consoles = Array.from(detectedConsoles)
-            console.log('[EmulatorJS] Detected consoles:', consoles)
             return consoles
         } catch (err) {
             console.error('[EmulatorJS] Error detecting consoles:', err)
@@ -1133,7 +1472,6 @@
     // Função para abrir modal de seleção de ícone
     async function openIconSelectionModal(folderEntry) {
         try {
-            console.log('[EmulatorJS] Opening icon selection modal for folder:', folderEntry.name)
 
             const { dialogLib } = HFS
 
@@ -1241,7 +1579,6 @@
 
                     iconDiv.addEventListener('click', async () => {
                         try {
-                            console.log('[EmulatorJS] Setting icon:', icon.name)
 
                             const setResult = await HFS.customRestCall('setFolderIcon', {
                                 folderPath: folderEntry.uri || folderEntry.url,
@@ -1304,7 +1641,6 @@
                     {
                         text: 'Cancel',
                         onclick: () => {
-                            console.log('[EmulatorJS] Icon selection cancelled')
                             dialog.close()
                         }
                     }
@@ -1342,7 +1678,6 @@
             const isAdmin = Boolean(HFS.state.adminUrl)
             if (!isAdmin) return
 
-            console.log('[EmulatorJS] Adding "Set Console Icon" option for folder:', entry.name)
 
             // Adicionar item de menu para definir ícone
             const iconItem = {
@@ -1351,7 +1686,6 @@
                 subLabel: 'Choose an icon for this folder',
                 icon: 'image',
                 onClick: async () => {
-                    console.log('[EmulatorJS] Set Console Icon clicked!')
                     await openIconSelectionModal(entry)
                     return true
                 }
@@ -1368,7 +1702,6 @@
                 subLabel: 'Remove the custom icon from this folder',
                 icon: 'trash',
                 onClick: async () => {
-                    console.log('[EmulatorJS] Remove Console Icon clicked!')
                     try {
                         const result = await HFS.customRestCall('removeFolderIcon', {
                             folderPath: folderPath
@@ -1404,15 +1737,15 @@
             }))
         }
 
-        console.log('[EmulatorJS] entryIcon hook called for', entry.name)
         const entryPath = entry.uri || entry.url;
         const srcCover = entryPath + `?get=game_cover&t=` + Date.now();
-        console.log('[EmulatorJS] entry path:', entryPath)
 
         if (entry.isFolder || (entry.isFolder == false && compatibleExtensions.includes(entry.ext))) {
-            console.log('[EmulatorJS] Checking for custom icon at', srcCover)
             return HFS.h(ImgFallback, {
-                fallback: () => entry.getDefaultIcon(),
+                // No cover -> render nothing. HFS renders every entryIcon
+                // output, so a default-icon fallback here would duplicate the
+                // folder icon (and another plugin may already provide one).
+                fallback: null,
                 props: {
                     src: srcCover,
                     className: 'icon thumbnail'
@@ -1420,8 +1753,9 @@
 
             })
         } else {
-            console.log('[EmulatorJS] entry is not a folder or compatible ROM, skipping custom icon')
-            return null // Retorna null explicitamente para que o HFS use o ícone padrão
+            // HFS renders the default icon when no output is returned;
+            // an explicit null would blank the whole icon slot instead.
+            return
         }
     })
 

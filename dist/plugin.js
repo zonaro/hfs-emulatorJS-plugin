@@ -37,6 +37,7 @@ exports.init = function (api) {
     const iconsDir = path.join(publicDir, 'icons', (api.getConfig('iconTheme') || 'monochrome'))
     const systemMapPath = path.join(publicDir, 'system_map.js');
     const mappingFile = path.join(configuredBase, 'icon-mappings.json')
+    const igdbTokenFile = path.join(configuredBase, 'igdb-token.json')
 
     //current logged user
 
@@ -78,17 +79,41 @@ exports.init = function (api) {
 
     // Utility: fix game name for consistent caching
     function fixGameName(romName) {
-        if (romName) {
-            romName = decodeURIComponent(romName);
-            romName = romName.toLowerCase();
-            romName = romName.replace(/^\/+|\/+$/g, '')
+        if (!romName) return romName;
+        let name = String(romName);
+        try {
+            name = decodeURIComponent(name);
+        } catch (err) {
+            // malformed encoding: keep the original value
         }
-        return romName;
+        name = name.replace(/\0/g, '');
+        name = name.toLowerCase();
+        name = name.replace(/^\/+|\/+$/g, '');
+        if (name.includes('..')) return '';
+        name = name.slice(0, 200);
+        if (!/^[\p{L}\p{N}\p{M}\/ ._\-()\[\]{}'&+,!#$%@~`^;=]*$/u.test(name)) return '';
+        return name;
     }
 
     // Utility: ensure directory exists recursively
     function ensureDir(fs, dir) {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // Security: loopback address check (mirrors HFS isLocalHost)
+    function isLoopback(ip) {
+        return ip === '::1' || /^(?:::ffff:)?127\.0\.0\.1$/i.test(ip || '');
+    }
+
+    // Security: admin access = logged admin account, or localhost_admin when not behind a proxy
+    function isAdminRequest(ctx) {
+        if (!ctx) return false;
+        const account = ctx.state && ctx.state.account;
+        if (account && account.admin) return true;
+        if (ctx.state && ctx.state.whenProxyDetected) return false;
+        if (api.getHfsConfig('localhost_admin') === false) return false;
+        if (!isLoopback(ctx.ip)) return false;
+        return /^(?:|localhost|127\.0\.0\.1|\[::1])(?::\d+)?$/i.test(ctx.get('Host') || '');
     }
 
     // Function to get game info from cache
@@ -117,9 +142,39 @@ exports.init = function (api) {
             return false
         }
     }
+    const IGDB_TOKEN_REFRESH_MARGIN = 5 * 60 * 1000
+
+    // Function to load a persisted IGDB token (with proactive refresh margin)
+    function loadIGDBTokenFromDisk() {
+        try {
+            if (!fs.existsSync(igdbTokenFile)) return false
+            const data = JSON.parse(fs.readFileSync(igdbTokenFile, 'utf8'))
+            if (data && data.access_token && data.expiry && Date.now() < data.expiry - IGDB_TOKEN_REFRESH_MARGIN) {
+                igdbToken = data.access_token
+                tokenExpiry = data.expiry
+                return true
+            }
+        } catch (err) {
+            api.log('[IGDB] Error reading stored token: ' + err.message)
+        }
+        return false
+    }
+
+    // Function to persist the IGDB token; on failure we keep the in-memory fallback
+    function saveIGDBTokenToDisk() {
+        try {
+            fs.writeFileSync(igdbTokenFile, JSON.stringify({ access_token: igdbToken, expiry: tokenExpiry }, null, 2), 'utf8')
+        } catch (err) {
+            api.log('[IGDB] Error storing token to disk: ' + err.message)
+        }
+    }
+
     // Function to get IGDB authentication token
     async function getIGDBToken() {
-        if (igdbToken && tokenExpiry && Date.now() < tokenExpiry) {
+        if (igdbToken && tokenExpiry && Date.now() < tokenExpiry - IGDB_TOKEN_REFRESH_MARGIN) {
+            return igdbToken
+        }
+        if (loadIGDBTokenFromDisk()) {
             return igdbToken
         }
 
@@ -160,6 +215,7 @@ exports.init = function (api) {
 
                         igdbToken = json.access_token
                         tokenExpiry = Date.now() + ((json.expires_in || 3600) * 1000)
+                        saveIGDBTokenToDisk()
                         api.log('IGDB token obtained successfully, expires in: ' + json.expires_in + 's')
                         resolve(igdbToken)
                     } catch (err) {
@@ -475,8 +531,9 @@ exports.init = function (api) {
         },
 
         /// Set cover image for a ROM
-        async setCover({ romName, coverUrl }) {
+        async setCover({ romName, coverUrl }, ctx) {
             try {
+                if (!isAdminRequest(ctx)) return { success: false, error: 'Admin access required' };
                 // Check if coverUrl is a valid URL
                 let finalCoverUrl = coverUrl
                 let hasExtension = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
@@ -515,8 +572,9 @@ exports.init = function (api) {
 
         },
         /// Remove cover image for a ROM
-        async removeCover({ romName }) {
+        async removeCover({ romName }, ctx) {
             try {
+                if (!isAdminRequest(ctx)) return { success: false, error: 'Admin access required' };
                 api.log(`[removeCover] Removing cover for ROM: ${romName}`)
 
                 // Check for cover files with different extensions
@@ -547,8 +605,9 @@ exports.init = function (api) {
 
 
 
-        async setFolderIcon({ folderPath, iconName }) {
+        async setFolderIcon({ folderPath, iconName }, ctx) {
             try {
+                if (!isAdminRequest(ctx)) return { success: false, error: 'Admin access required' };
                 if (!folderPath || !iconName) {
                     return { success: false, error: 'Missing folderPath or iconName parameter' }
                 }
@@ -587,8 +646,9 @@ exports.init = function (api) {
 
 
 
-        async removeFolderIcon({ folderPath }) {
+        async removeFolderIcon({ folderPath }, ctx) {
             try {
+                if (!isAdminRequest(ctx)) return { success: false, error: 'Admin access required' };
                 if (!folderPath) {
                     return { success: false, error: 'Missing folderPath parameter' }
                 }
@@ -630,47 +690,16 @@ exports.init = function (api) {
             }
         },
 
-        async setFolderIcon({ folderPath, iconName }) {
-            try {
-                if (!folderPath || !iconName) {
-                    return { success: false, error: 'Missing folderPath or iconName parameter' }
-                }
-
-                api.log(`[setFolderIcon] Setting icon "${iconName}" for folder: ${folderPath}`)
-
-
-
-                // Normalizar path da pasta
-                const normalizedPath = fixGameName(folderPath.replace(/^\/+|\/+$/g, ''))
-
-                // Carregar mappings existentes
-                let mappings = {}
-                if (fs.existsSync(mappingFile)) {
-                    try {
-                        const data = fs.readFileSync(mappingFile, 'utf8')
-                        mappings = JSON.parse(data)
-                    } catch (err) {
-                        api.log(`[setFolderIcon] Error reading mappings: ${err.message}`)
-                    }
-                }
-
-                // Adicionar/atualizar mapping
-                mappings[normalizedPath] = iconName
-                fs.writeFileSync(mappingFile, JSON.stringify(mappings, null, 2), 'utf8')
-
-                api.log(`[setFolderIcon] Icon set successfully for folder: ${folderPath}`)
-                return { success: true, message: 'Folder icon set successfully' }
-            } catch (err) {
-                api.log(`[setFolderIcon] Error: ${err.message}`)
-                return { success: false, error: err.message }
-            }
-        },
-
     }
 
     // Helper functions for save/load state endpoints
     async function handleSaveState(ctx) {
         try {
+            if (!isAdminRequest(ctx)) {
+                ctx.status = 403;
+                ctx.body = 'Admin access required';
+                return;
+            }
             api.log(`[handleSaveState] Starting save state`);
             const body = await getBody(ctx);
             api.log(`[handleSaveState] Body received: ${typeof body}, keys: ${Object.keys(body)}`);
@@ -710,7 +739,7 @@ exports.init = function (api) {
         } catch (err) {
             api.log(`Error saving state: ${err.message}`);
             api.log(`Error stack: ${err.stack}`);
-            ctx.status = 500;
+            ctx.status = err.statusCode || 500;
             ctx.body = 'Error';
         }
     }
@@ -756,6 +785,11 @@ exports.init = function (api) {
 
     async function handleSaveGame(ctx) {
         try {
+            if (!isAdminRequest(ctx)) {
+                ctx.status = 403;
+                ctx.body = 'Admin access required';
+                return;
+            }
             const body = await getBody(ctx);
             const { file } = body;
             const gameName = fixGameName(ctx.query.gameName || '');
@@ -778,7 +812,7 @@ exports.init = function (api) {
             ctx.body = 'OK';
         } catch (err) {
             api.log(`Error saving game: ${err.message}`);
-            ctx.status = 500;
+            ctx.status = err.statusCode || 500;
             ctx.body = 'Error';
         }
     }
@@ -815,11 +849,23 @@ exports.init = function (api) {
         }
     }
 
-    // Helper to get request body
+    // Helper to get request body, with a ~1MB limit
     function getBody(ctx) {
+        const MAX_BODY_LENGTH = 1024 * 1024;
         return new Promise((resolve, reject) => {
             let body = '';
-            ctx.req.on('data', chunk => body += chunk);
+            let size = 0;
+            ctx.req.on('data', chunk => {
+                size += chunk.length;
+                if (size > MAX_BODY_LENGTH) {
+                    const err = new Error('Request body too large');
+                    err.statusCode = 413;
+                    ctx.req.destroy();
+                    reject(err);
+                    return;
+                }
+                body += chunk;
+            });
             ctx.req.on('end', () => {
                 try {
                     resolve(JSON.parse(body));
@@ -837,24 +883,29 @@ exports.init = function (api) {
         frontend_css: 'emulator.css',
         middleware(ctx) {
 
-            // Define headers for cross-origin
-            if (ctx.path.startsWith('/~/emulatorjs/')) {
-                ctx.set('Access-Control-Allow-Origin', '*');
+            // CORS: echo the request Origin (fallback to Host) so credentials and COOP/COEP stay consistent
+            const origin = ctx.get('Origin') || ctx.host;
+            const allowedGets = ['game_cover'];
+            const typeGet = ctx.query.get;
+            const isCoverRequest = allowedGets.includes(typeGet);
+            const isEmulatorPath = ctx.path.startsWith('/~/emulatorjs/');
+
+            if (isEmulatorPath || isCoverRequest) {
+                ctx.set('Access-Control-Allow-Origin', origin);
+                const vary = ctx.get('Vary') || '';
+                if (!/\bOrigin\b/i.test(vary)) {
+                    ctx.set('Vary', vary ? vary + ', Origin' : 'Origin');
+                }
                 ctx.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-                ctx.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+                ctx.set('Access-Control-Allow-Methods', 'GET, POST, HEAD, OPTIONS');
                 if (ctx.method === 'OPTIONS') {
                     ctx.status = 200;
+                    ctx.body = '';
                     return;
                 }
             }
 
-            const allowedGets = ['game_cover']
-            const typeGet = ctx.query.get;
-            if (allowedGets.includes(typeGet)) {
-                // Para requisições de imagens, definir apenas CORS
-                ctx.set('Access-Control-Allow-Origin', '*');
-                ctx.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-            } else {
+            if (!isCoverRequest) {
                 // Para outras requisições (incluindo o emulador), definir COEP/COOP
                 ctx.set('Cross-Origin-Opener-Policy', 'same-origin');
                 ctx.set('Cross-Origin-Embedder-Policy', 'credentialless');
