@@ -77,6 +77,63 @@ exports.init = function (api) {
         api.setError('EmulatorJS plugin: missing public files (emulator.js or emulator.css). Check the public/ folder.')
     }
 
+    const CONFIG_KEYS = [
+        'customIcons', 'iconFolder', 'iconThumbSuffix', 'iconPreviewSuffix',
+        'artworkOnDemand',
+        'ejsDataSource', 'ejsDataCustomUrl', 'ejsLocalDir', 'ejsLocalReady', 'systemMap',
+        'thegamesdbApiKey',
+        'emulatorsJsVersion', 'iconTheme', 'igdbClientId', 'igdbClientSecret',
+    ];
+
+    function defaultSystemMap() {
+        return SYSTEM_MAP.map(entry => ({
+            system: entry.system || '',
+            name: entry.name || '',
+            extensions: Array.isArray(entry.extensions) ? entry.extensions.join(',') : String(entry.extensions || ''),
+            core: Array.isArray(entry.core) ? entry.core.join(',') : String(entry.core || ''),
+            bios: '',
+            aliases: '',
+            artworkRepo: '',
+            gamepadLayout: '',
+        }));
+    }
+
+    // HFS renders array configs field-by-field; unknown row keys crash it.
+    function canonicalSystemMap(rows) {
+        if (!Array.isArray(rows)) return [];
+        return rows
+            .filter(row => row && typeof row === 'object')
+            .map(row => ({
+                system: String(row.system || '').trim(),
+                name: String(row.name || '').trim(),
+                extensions: Array.isArray(row.extensions) ? row.extensions.join(',') : String(row.extensions || ''),
+                core: Array.isArray(row.core) ? row.core.join(',') : String(row.core || ''),
+                bios: String(row.bios || ''),
+                aliases: Array.isArray(row.aliases) ? row.aliases.join(',') : String(row.aliases || ''),
+                artworkRepo: String(row.artworkRepo || ''),
+                gamepadLayout: Array.isArray(row.gamepadLayout) ? JSON.stringify(row.gamepadLayout) : String(row.gamepadLayout || ''),
+            }))
+            .filter(row => row.system);
+    }
+
+    function isDefaultSystemMap(rows) {
+        try {
+            return JSON.stringify(canonicalSystemMap(rows)) === JSON.stringify(canonicalSystemMap(defaultSystemMap()));
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function isLocalEjsReady() {
+        try {
+            const dir = api.getConfig('ejsLocalDir');
+            if (!dir) return false;
+            return fs.statSync(dir).isDirectory() && fs.existsSync(path.join(dir, 'loader.js'));
+        } catch (err) {
+            return false;
+        }
+    }
+
     // Utility: fix game name for consistent caching
     function fixGameName(romName) {
         if (!romName) return romName;
@@ -441,6 +498,443 @@ exports.init = function (api) {
         })
     }
 
+    const ARTWORK_USER_AGENT = 'hfs-emulatorJS-plugin/1.5 (+https://github.com/rejetto/hfs)'
+    const HTTP_TIMEOUT_MS = 15000
+    const HTTP_MAX_REDIRECTS = 5
+    const HTTP_MAX_BYTES = 10 * 1024 * 1024
+
+    const ARTWORK_REPO_MAP = {
+        '3ds': 'Nintendo_-_Nintendo_3DS',
+        nes: 'Nintendo_-_Nintendo_Entertainment_System',
+        snes: 'Nintendo_-_Super_Nintendo_Entertainment_System',
+        n64: 'Nintendo_-_Nintendo_64',
+        gb: 'Nintendo_-_Game_Boy',
+        gba: 'Nintendo_-_Game_Boy_Advance',
+        nds: 'Nintendo_-_Nintendo_DS',
+        vb: 'Nintendo_-_Virtual_Boy',
+        segaMD: 'Sega_-_Mega_Drive_-_Genesis',
+        segaMS: 'Sega_-_Master_System_-_Mark_III',
+        segaGG: 'Sega_-_Game_Gear',
+        segaCD: 'Sega_-_Mega-CD_-_Sega_CD',
+        sega32x: 'Sega_-_32X',
+        segaSaturn: 'Sega_-_Saturn',
+        sg1000: 'Sega_-_SG-1000',
+        pico: 'Sega_-_PICO',
+        psx: 'Sony_-_PlayStation',
+        psp: 'Sony_-_PlayStation_Portable',
+        atari2600: 'Atari_-_2600',
+        atari5200: 'Atari_-_5200',
+        atari7800: 'Atari_-_7800',
+        lynx: 'Atari_-_Lynx',
+        jaguar: 'Atari_-_Jaguar',
+        fbneo: 'FBNeo_-_Arcade_Games',
+        arcade: 'FBNeo_-_Arcade_Games',
+        neogeo: 'FBNeo_-_Arcade_Games',
+        mame: 'MAME',
+        c64: 'Commodore_-_64',
+        amiga: 'Commodore_-_Amiga',
+        coleco: 'Coleco_-_ColecoVision',
+        pce: 'NEC_-_PC_Engine_-_TurboGrafx_16',
+        ngp: 'SNK_-_Neo_Geo_Pocket',
+        ws: 'Bandai_-_WonderSwan',
+        '3do': 'The_3DO_Company_-_3DO',
+        dos: 'DOS',
+        cpc: 'Amstrad_-_CPC',
+        zxspectrum: 'Sinclair_-_ZX_Spectrum',
+        pcfx: 'NEC_-_PC-FX',
+        cdi: 'Philips_-_CD-i',
+        doom: 'DOOM',
+    }
+
+    function httpsRequest(url, headers, redirects) {
+        if (redirects === undefined) redirects = 0
+        return new Promise((resolve, reject) => {
+            const proto = String(url).startsWith('http://') ? http : https
+            const req = proto.get(url, {
+                headers: Object.assign({ 'User-Agent': ARTWORK_USER_AGENT }, headers || {}),
+                timeout: HTTP_TIMEOUT_MS,
+            }, (res) => {
+                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    res.resume()
+                    if (redirects >= HTTP_MAX_REDIRECTS) {
+                        reject(new Error('Too many redirects'))
+                        return
+                    }
+                    let next = res.headers.location
+                    try { next = new URL(next, url).toString() } catch (err) { }
+                    resolve(httpsRequest(next, headers, redirects + 1))
+                    return
+                }
+                const chunks = []
+                let size = 0
+                let done = false
+                res.on('data', (chunk) => {
+                    if (done) return
+                    size += chunk.length
+                    if (size > HTTP_MAX_BYTES) {
+                        done = true
+                        res.destroy()
+                        reject(new Error('Response too large'))
+                        return
+                    }
+                    chunks.push(chunk)
+                })
+                res.on('end', () => {
+                    if (done) return
+                    done = true
+                    resolve({ status: res.statusCode, headers: res.headers, buffer: Buffer.concat(chunks) })
+                })
+                res.on('error', (err) => {
+                    if (!done) {
+                        done = true
+                        reject(err)
+                    }
+                })
+            })
+            req.on('timeout', () => req.destroy(new Error('Request timed out')))
+            req.on('error', reject)
+        })
+    }
+
+    // Error messages intentionally omit the URL so credentials are never logged.
+    async function httpsGetJson(url) {
+        const res = await httpsRequest(url)
+        if (res.status !== 200) throw new Error('HTTP ' + res.status)
+        try {
+            return JSON.parse(res.buffer.toString('utf8'))
+        } catch (err) {
+            throw new Error('Invalid JSON response')
+        }
+    }
+
+    async function httpsGetText(url) {
+        const res = await httpsRequest(url)
+        if (res.status !== 200) throw new Error('HTTP ' + res.status)
+        return res.buffer.toString('utf8')
+    }
+
+    const TGDB_API = 'https://api.thegamesdb.net/v1'
+    const TGDB_MISS_TTL = 6 * 60 * 60 * 1000
+    const tgdbMissCache = new Map()
+
+    function tgdbIsMiss(key) {
+        const at = tgdbMissCache.get(key)
+        if (at === undefined) return false
+        if (Date.now() - at > TGDB_MISS_TTL) {
+            tgdbMissCache.delete(key)
+            return false
+        }
+        return true
+    }
+
+    function tgdbMarkMiss(key) {
+        tgdbMissCache.set(key, Date.now())
+        while (tgdbMissCache.size > 500) tgdbMissCache.delete(tgdbMissCache.keys().next().value)
+    }
+
+    async function fetchTheGamesDB(gameName) {
+        const apiKey = api.getConfig('thegamesdbApiKey')
+        if (!apiKey) return null
+        const cacheKey = String(gameName || '').toLowerCase().trim()
+        if (!cacheKey || tgdbIsMiss(cacheKey)) return null
+
+        const searchUrl = TGDB_API + '/Games/ByGameName?apikey=' + encodeURIComponent(apiKey)
+            + '&name=' + encodeURIComponent(gameName)
+            + '&fields=players,publishers,genres,overview,last_updated,rating,followers,slug'
+
+        let game = null
+        try {
+            const data = await httpsGetJson(searchUrl)
+            const games = data && data.data && Array.isArray(data.data.games) ? data.data.games : []
+            game = games.length ? games[0] : null
+        } catch (err) {
+            api.log('[Artwork] TheGamesDB search unavailable: ' + err.message)
+            return null
+        }
+
+        if (!game || !game.id) {
+            tgdbMarkMiss(cacheKey)
+            return null
+        }
+
+        const imagesUrl = TGDB_API + '/Games/Images?apikey=' + encodeURIComponent(apiKey)
+            + '&games_id=' + encodeURIComponent(game.id) + '&filter[boxart]=front'
+
+        try {
+            const data = await httpsGetJson(imagesUrl)
+            const payload = data && data.data ? data.data : {}
+            const images = Array.isArray(payload.images) ? payload.images : []
+            const base = (payload.base_url && (payload.base_url.original || payload.base_url.large)) || 'https://cdn.thegamesdb.net/images/original/'
+            const box = images.find(img => img && img.type === 'boxart' && (!img.side || img.side === 'front'))
+                || images.find(img => img && img.type === 'boxart')
+            if (!box || !box.filename) {
+                tgdbMarkMiss(cacheKey)
+                return null
+            }
+            return { url: base + box.filename, source: 'thegamesdb' }
+        } catch (err) {
+            api.log('[Artwork] TheGamesDB images unavailable: ' + err.message)
+            return null
+        }
+    }
+
+    const THUMBNAIL_SERVER = 'https://thumbnails.libretro.com'
+    const GITHUB_API = 'https://api.github.com'
+    const GITHUB_RAW = 'https://raw.githubusercontent.com'
+    const MIN_ART_SCORE = 0.45
+    const LIST_CACHE_TTL = 6 * 60 * 60 * 1000
+    const LIST_CACHE_MAX = 200
+    const serverListCache = new Map()
+    const githubListCache = new Map()
+
+    function listCacheGet(cache, key) {
+        const entry = cache.get(key)
+        if (!entry) return undefined
+        if (Date.now() - entry.at > LIST_CACHE_TTL) {
+            cache.delete(key)
+            return undefined
+        }
+        cache.delete(key)
+        cache.set(key, entry)
+        return entry.value
+    }
+
+    function listCacheSet(cache, key, value) {
+        cache.set(key, { at: Date.now(), value })
+        while (cache.size > LIST_CACHE_MAX) cache.delete(cache.keys().next().value)
+    }
+
+    function normalizeArtName(name) {
+        return String(name)
+            .replace(/\.[a-z0-9]+$/i, '')
+            .replace(/\[[^\]]*\]/g, ' ')
+            .replace(/\([^)]*\)/g, ' ')
+            .replace(/[_\-.]+/g, ' ')
+            .replace(/[^a-z0-9 ]/gi, ' ')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim()
+    }
+
+    function artBigrams(str) {
+        const s = String(str).replace(/\s+/g, '')
+        const set = new Set()
+        for (let i = 0; i < s.length - 1; i++) set.add(s.slice(i, i + 2))
+        return set
+    }
+
+    function artSimilarity(a, b) {
+        const A = artBigrams(a)
+        const B = artBigrams(b)
+        if (!A.size || !B.size) return 0
+        let overlap = 0
+        for (const g of A) if (B.has(g)) overlap++
+        return (2 * overlap) / (A.size + B.size)
+    }
+
+    const REGION_TAGS = ['usa', 'world', 'europe', 'japan', 'uk', 'germany', 'france', 'spain', 'italy', 'australia', 'canada', 'asia', 'korea', 'brazil', 'netherlands']
+
+    function extractRegion(name) {
+        const tags = [...String(name).matchAll(/\(([^)]*)\)/g)].map(m => m[1].toLowerCase())
+        for (const tag of tags) for (const region of REGION_TAGS) if (tag.includes(region)) return region
+        return null
+    }
+
+    function findBestArtMatch(romBaseName, candidateFiles) {
+        const target = normalizeArtName(romBaseName)
+        const wantRegion = extractRegion(romBaseName)
+        let best = null
+        let bestScore = 0
+        let bestRegionMatch = false
+        for (const filePath of candidateFiles) {
+            const fileName = path.basename(filePath)
+            const score = artSimilarity(target, normalizeArtName(fileName))
+            if (score < bestScore) continue
+            const regionMatch = wantRegion ? extractRegion(fileName) === wantRegion : false
+            if (score > bestScore || (score === bestScore && regionMatch && !bestRegionMatch)) {
+                bestScore = score
+                best = filePath
+                bestRegionMatch = regionMatch
+            }
+        }
+        return { path: best, score: bestScore }
+    }
+
+    function serverFolderName(repo) {
+        return String(repo).replace(/_/g, ' ').trim()
+    }
+
+    function serverArtDirUrl(serverFolder, subdir) {
+        return THUMBNAIL_SERVER + '/' + encodeURIComponent(serverFolder) + '/' + subdir + '/'
+    }
+
+    function serverArtFileUrl(serverFolder, subdir, fileName) {
+        return THUMBNAIL_SERVER + '/' + encodeURIComponent(serverFolder) + '/' + subdir + '/' + encodeURIComponent(fileName)
+    }
+
+    function parseDirectoryListing(html) {
+        const names = []
+        const seen = new Set()
+        const re = /href\s*=\s*["']([^"']+\.(?:png|jpe?g))["']/gi
+        let m
+        while ((m = re.exec(html))) {
+            let href = m[1].split('?')[0].split('#')[0]
+            try { href = decodeURIComponent(href) } catch (err) { }
+            const base = href.split('/').pop()
+            if (base && base !== '..' && !seen.has(base)) {
+                seen.add(base)
+                names.push(base)
+            }
+        }
+        return names
+    }
+
+    function getServerFileList(serverFolder, subdir) {
+        const key = serverFolder + '/' + subdir
+        let cached = listCacheGet(serverListCache, key)
+        if (cached === undefined) {
+            cached = (async () => {
+                const html = await httpsGetText(serverArtDirUrl(serverFolder, subdir))
+                return parseDirectoryListing(html)
+            })().catch(() => [])
+            listCacheSet(serverListCache, key, cached)
+        }
+        return cached
+    }
+
+    function getGitHubFileList(repo) {
+        let cached = listCacheGet(githubListCache, repo)
+        if (cached === undefined) {
+            cached = (async () => {
+                const data = await httpsGetJson(GITHUB_API + '/repos/libretro-thumbnails/' + repo + '/git/trees/master?recursive=1')
+                if (!data.tree) throw new Error('Unexpected tree response')
+                return data.tree.filter(t => t.type === 'blob' && /\.(png|jpg|jpeg)$/i.test(t.path)).map(t => t.path)
+            })().catch(() => [])
+            listCacheSet(githubListCache, repo, cached)
+        }
+        return cached
+    }
+
+    async function findLibretroArtwork(systemId, romBase) {
+        const repo = ARTWORK_REPO_MAP[systemId]
+        if (!repo) return null
+        const serverFolder = serverFolderName(repo)
+
+        try {
+            const files = await getServerFileList(serverFolder, 'Named_Boxarts')
+            if (files && files.length) {
+                const match = findBestArtMatch(romBase, files)
+                if (match.path && match.score >= MIN_ART_SCORE) {
+                    return { url: serverArtFileUrl(serverFolder, 'Named_Boxarts', match.path), source: 'libretro' }
+                }
+            }
+        } catch (err) { }
+
+        try {
+            const files = await getGitHubFileList(repo)
+            if (files && files.length) {
+                const boxarts = files.filter(f => f.startsWith('Named_Boxarts/'))
+                const match = findBestArtMatch(romBase, boxarts)
+                if (match.path && match.score >= MIN_ART_SCORE) {
+                    const encoded = match.path.split('/').map(encodeURIComponent).join('/')
+                    return { url: GITHUB_RAW + '/libretro-thumbnails/' + repo + '/master/' + encoded, source: 'libretro' }
+                }
+            }
+        } catch (err) { }
+
+        return null
+    }
+
+    const artworkCache = new Map()
+    const artworkPending = new Map()
+    const ARTWORK_CACHE_MAX = 300
+    const ARTWORK_MISS_TTL = 6 * 60 * 60 * 1000
+
+    function artworkCacheGet(key) {
+        const entry = artworkCache.get(key)
+        if (!entry) return undefined
+        if (entry.value === null && Date.now() - entry.at > ARTWORK_MISS_TTL) {
+            artworkCache.delete(key)
+            return undefined
+        }
+        artworkCache.delete(key)
+        artworkCache.set(key, entry)
+        return entry.value
+    }
+
+    function artworkCacheSet(key, value) {
+        artworkCache.set(key, { at: Date.now(), value })
+        while (artworkCache.size > ARTWORK_CACHE_MAX) artworkCache.delete(artworkCache.keys().next().value)
+    }
+
+    function detectSystemId(fileName, folderPath) {
+        const ext = path.extname(String(fileName || '')).slice(1).toLowerCase()
+        let byExt = []
+        if (ext) byExt = SYSTEM_MAP.filter(s => s.extensions.includes(ext))
+        if (byExt.length === 1) return byExt[0].system
+        const detected = tryDetectPlatform((String(folderPath || '') + ' ' + String(fileName || '')).trim())
+        if (detected && detected.system) return detected.system
+        if (byExt.length) return byExt[0].system
+        return null
+    }
+
+    async function resolveCover(gameName, systemId) {
+        if (!gameName) return null
+        const romBase = path.basename(String(gameName), path.extname(String(gameName)))
+        const cacheKey = String(systemId || '?') + '|' + romBase.toLowerCase()
+        const cached = artworkCacheGet(cacheKey)
+        if (cached !== undefined) return cached
+        const running = artworkPending.get(cacheKey)
+        if (running) return running
+
+        const work = (async () => {
+            const searchName = cleanFilename(String(gameName)) || romBase
+
+            // Level 1: IGDB, only when credentials are configured
+            if (api.getConfig('igdbClientId') && api.getConfig('igdbClientSecret')) {
+                try {
+                    const results = await searchGameCovers(searchName)
+                    if (Array.isArray(results) && results.length && results[0].coverUrl) {
+                        return { url: results[0].coverUrl, source: 'igdb' }
+                    }
+                } catch (err) {
+                    api.log('[Artwork] IGDB fallback skipped: ' + err.message)
+                }
+            }
+
+            // Levels 2-3 are disabled by the artworkOnDemand toggle
+            if (api.getConfig('artworkOnDemand') !== false) {
+                // Level 2: TheGamesDB, only when an API key is configured
+                try {
+                    const tgdb = await fetchTheGamesDB(searchName)
+                    if (tgdb) return tgdb
+                } catch (err) {
+                    api.log('[Artwork] TheGamesDB fallback skipped: ' + err.message)
+                }
+
+                // Level 3: libretro-thumbnails on demand
+                if (systemId) {
+                    try {
+                        const libretro = await findLibretroArtwork(systemId, romBase)
+                        if (libretro) return libretro
+                    } catch (err) {
+                        api.log('[Artwork] libretro fallback skipped: ' + err.message)
+                    }
+                }
+            }
+
+            return null
+        })().then((result) => {
+            artworkCacheSet(cacheKey, result)
+            return result
+        }).finally(() => {
+            artworkPending.delete(cacheKey)
+        })
+
+        artworkPending.set(cacheKey, work)
+        return work
+    }
+
     // Custom REST API
     const customRest = {
         /// Search for game covers
@@ -690,6 +1184,40 @@ exports.init = function (api) {
             }
         },
 
+        emulatorjsGetConfig(params, ctx) {
+            if (!isAdminRequest(ctx)) { ctx.status = 403; return { error: 'Admin access required' } }
+            const cfg = { ...(api.getConfig() || {}) }
+            cfg.ejsLocalReady = isLocalEjsReady()
+            return cfg
+        },
+
+        emulatorjsSetConfig(params, ctx) {
+            if (!isAdminRequest(ctx)) { ctx.status = 403; return { error: 'Admin access required' } }
+            const incoming = params && params.config
+            if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+                ctx.status = 400
+                return { error: 'Invalid config payload' }
+            }
+            for (const key of CONFIG_KEYS) {
+                if (!(key in incoming)) continue
+                let value = incoming[key]
+                if (key === 'systemMap') {
+                    const canonical = canonicalSystemMap(value)
+                    value = isDefaultSystemMap(canonical) ? [] : canonical
+                }
+                api.setConfig(key, value)
+            }
+            api.setConfig('ejsLocalReady', isLocalEjsReady())
+            const cfg = { ...(api.getConfig() || {}) }
+            cfg.ejsLocalReady = isLocalEjsReady()
+            return { ok: true, saved: true, config: cfg }
+        },
+
+        emulatorjsDefaultSystemMap(params, ctx) {
+            if (!isAdminRequest(ctx)) { ctx.status = 403; return { error: 'Admin access required' } }
+            return { systemMap: defaultSystemMap() }
+        },
+
     }
 
     // Helper functions for save/load state endpoints
@@ -849,6 +1377,83 @@ exports.init = function (api) {
         }
     }
 
+    function handleSettingsPage(ctx) {
+        if (!isAdminRequest(ctx)) {
+            ctx.status = 403;
+            ctx.type = 'text/plain; charset=utf-8';
+            ctx.body = 'Administrator access required';
+            return;
+        }
+        const file = path.join(publicDir, 'settings.html');
+        if (!fs.existsSync(file)) {
+            ctx.status = 500;
+            ctx.type = 'text/plain; charset=utf-8';
+            ctx.body = 'settings.html is missing from the plugin folder';
+            return;
+        }
+        ctx.status = 200;
+        ctx.type = 'text/html; charset=utf-8';
+        ctx.set('Cache-Control', 'no-store');
+        if (ctx.method === 'HEAD') return;
+        ctx.body = fs.readFileSync(file);
+    }
+
+    const EJS_MIME = {
+        html: 'text/html; charset=utf-8', htm: 'text/html; charset=utf-8',
+        js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8',
+        json: 'application/json; charset=utf-8', map: 'application/json; charset=utf-8',
+        css: 'text/css; charset=utf-8', txt: 'text/plain; charset=utf-8',
+        wasm: 'application/wasm', data: 'application/octet-stream', mem: 'application/octet-stream',
+        bin: 'application/octet-stream',
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon',
+        wav: 'audio/wav', mp3: 'audio/mpeg', ogg: 'audio/ogg',
+    };
+    const EJS_DATA_PREFIX = '/~/retro-emulator/data/';
+
+    function serveEjsData(ctx) {
+        const dir = api.getConfig('ejsLocalDir');
+        if (!dir) { ctx.status = 404; ctx.body = 'Local EmulatorJS folder is not configured'; return; }
+        if (!isLocalEjsReady()) { ctx.status = 404; ctx.body = 'Local EmulatorJS folder is not a valid EmulatorJS install'; return; }
+
+        let base;
+        try { base = fs.realpathSync(path.resolve(String(dir).trim())); }
+        catch (err) { ctx.status = 404; ctx.body = 'Local EmulatorJS folder not found'; return; }
+
+        let rel = ctx.path.slice(EJS_DATA_PREFIX.length);
+        try { rel = decodeURIComponent(rel); } catch (err) { }
+        rel = rel.replace(/\\/g, '/').replace(/^\/+/, '');
+
+        if (rel.split('/').some(seg => seg.startsWith('.'))) { ctx.status = 403; ctx.body = 'Forbidden'; return; }
+
+        let target = path.resolve(base, rel);
+        if (target !== base && !target.startsWith(base + path.sep)) { ctx.status = 403; ctx.body = 'Forbidden'; return; }
+
+        let real;
+        try { real = fs.realpathSync(target); }
+        catch (err) { ctx.status = 404; ctx.body = 'Not found'; return; }
+        if (real !== base && !real.startsWith(base + path.sep)) { ctx.status = 403; ctx.body = 'Forbidden'; return; }
+        target = real;
+
+        let stat;
+        try { stat = fs.statSync(target); }
+        catch (err) { ctx.status = 404; ctx.body = 'Not found'; return; }
+
+        if (stat.isDirectory()) {
+            const index = path.join(target, 'index.html');
+            if (fs.existsSync(index)) { target = index; stat = fs.statSync(index); }
+            else { ctx.status = 404; ctx.body = 'Not found'; return; }
+        }
+
+        const ext = path.extname(target).slice(1).toLowerCase();
+        ctx.status = 200;
+        ctx.type = EJS_MIME[ext] || 'application/octet-stream';
+        ctx.set('Cache-Control', 'public, max-age=3600');
+        ctx.length = stat.size;
+        if (ctx.method === 'HEAD') return;
+        try { ctx.body = fs.readFileSync(target); }
+        catch (err) { ctx.status = 500; ctx.body = 'Failed to read file'; }
+    }
+
     // Helper to get request body, with a ~1MB limit
     function getBody(ctx) {
         const MAX_BODY_LENGTH = 1024 * 1024;
@@ -881,7 +1486,7 @@ exports.init = function (api) {
         // Frontend files (paths relative to the plugin's public folder)
         frontend_js: ['system_map.js', 'emulator.js'],
         frontend_css: 'emulator.css',
-        middleware(ctx) {
+        async middleware(ctx) {
 
             // CORS: echo the request Origin (fallback to Host) so credentials and COOP/COEP stay consistent
             const origin = ctx.get('Origin') || ctx.host;
@@ -925,6 +1530,16 @@ exports.init = function (api) {
             }
             if (ctx.path === '/~/emulatorjs/loadGame' && ctx.method === 'GET') {
                 return handleLoadGame(ctx);
+            }
+
+            if ((ctx.path === '/~/retro-emulator/settings' || ctx.path === '/~/retro-emulator/settings.html')
+                && (ctx.method === 'GET' || ctx.method === 'HEAD')) {
+                return handleSettingsPage(ctx);
+            }
+
+            if (ctx.path.startsWith('/~/retro-emulator/data/')
+                && (ctx.method === 'GET' || ctx.method === 'HEAD')) {
+                return serveEjsData(ctx);
             }
 
             if (!allowedGets.includes(typeGet)) return;
@@ -1016,6 +1631,22 @@ exports.init = function (api) {
                         }
                     }
                     if (!iconPath) {
+                        api.log(`No local cover found for file: ${fileName}, trying on-demand artwork`)
+                        try {
+                            const systemId = detectSystemId(fileName, folderPath)
+                            const artwork = await resolveCover(fileName, systemId)
+                            if (artwork && artwork.url) {
+                                api.log(`Serving remote cover (${artwork.source}) for ${fileName}`)
+                                ctx.status = 302
+                                ctx.set('Location', artwork.url)
+                                ctx.set('Cache-Control', 'private, max-age=86400')
+                                ctx.length = 0
+                                ctx.body = null
+                                return
+                            }
+                        } catch (err) {
+                            api.log(`resolveCover failed: ${err.message}`)
+                        }
                         api.log(`No cover found for file: ${fileName}`)
                     }
                 }
@@ -1149,6 +1780,16 @@ exports.init = function (api) {
 
         // Plugin configuration
         config: {
+            settingsLink: {
+                type: 'show_html',
+                html: '<div style="display:flex;flex-direction:column;gap:.7em">'
+                    + '<div>Icon theme, EmulatorJS source, the console/system map and API credentials are managed on the plugin&rsquo;s own settings page.</div>'
+                    + '<div><a href="../retro-emulator/settings" target="_blank" rel="noopener"'
+                    + ' style="display:inline-block;padding:.55em 1.1em;border-radius:5px;background:#1976d2;color:#fff;text-decoration:none;font-weight:600">'
+                    + 'Open EmulatorJS settings &rarr;</a></div>'
+                    + '</div>',
+            },
+
             emulatorsJsVersion: {
                 type: 'select',
                 defaultValue: 'stable',
@@ -1188,6 +1829,96 @@ exports.init = function (api) {
                 label: 'IGDB Client Secret',
                 helperText: 'Get from https://dev.twitch.tv/console/apps (keep this secret!)',
                 inputProps: { type: 'password' }
+            },
+
+            customIcons: {
+                type: 'boolean',
+                defaultValue: true,
+                label: 'Custom ROM icons',
+                showIf: '() => false',
+            },
+            iconFolder: {
+                type: 'string',
+                defaultValue: 'images',
+                label: 'Icon subfolder name',
+                showIf: '() => false',
+            },
+            iconThumbSuffix: {
+                type: 'string',
+                defaultValue: '-thumb',
+                label: 'Thumbnail filename suffix',
+                showIf: '() => false',
+            },
+            iconPreviewSuffix: {
+                type: 'string',
+                defaultValue: '-image',
+                label: 'Preview filename suffix',
+                showIf: '() => false',
+            },
+            artworkOnDemand: {
+                type: 'boolean',
+                defaultValue: true,
+                label: 'Fetch artwork on demand',
+                showIf: '() => false',
+            },
+            ejsDataSource: {
+                type: 'select',
+                defaultValue: '',
+                label: 'EmulatorJS data source',
+                options: {
+                    'Follow EmulatorJS Version': '',
+                    'Stable': 'stable',
+                    'Latest': 'latest',
+                    'Nightly': 'nightly',
+                    'Local folder': 'local',
+                    'Custom URL': 'custom',
+                },
+                frontend: true,
+                showIf: '() => false',
+            },
+            ejsDataCustomUrl: {
+                type: 'string',
+                defaultValue: '',
+                label: 'Custom EmulatorJS data URL',
+                frontend: true,
+                showIf: '() => false',
+            },
+            ejsLocalDir: {
+                type: 'string',
+                defaultValue: '',
+                label: 'Local EmulatorJS folder',
+                showIf: '() => false',
+            },
+            ejsLocalReady: {
+                type: 'boolean',
+                defaultValue: false,
+                label: 'Local EmulatorJS folder ready',
+                frontend: true,
+                showIf: '() => false',
+            },
+            thegamesdbApiKey: {
+                type: 'string',
+                defaultValue: '',
+                label: 'TheGamesDB API Key',
+                inputProps: { type: 'password' },
+                showIf: '() => false',
+            },
+            systemMap: {
+                type: 'array',
+                label: 'Console / system map',
+                defaultValue: [],
+                fields: {
+                    system: { label: 'System ID', required: true },
+                    name: { label: 'Display name', required: true },
+                    extensions: { label: 'File extensions' },
+                    core: { label: 'EmulatorJS core(s)' },
+                    bios: { label: 'BIOS file name' },
+                    aliases: { label: 'Folder names' },
+                    artworkRepo: { label: 'Artwork repo' },
+                    gamepadLayout: { label: 'Gamepad layout (JSON)', multiline: true },
+                },
+                frontend: true,
+                showIf: '() => false',
             },
         },
 

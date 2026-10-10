@@ -41,6 +41,127 @@
         }
     }
 
+    function splitCsv(value) {
+        if (Array.isArray(value)) return value.map(String).map(s => s.trim()).filter(Boolean)
+        return String(value || '').split(',').map(s => s.trim()).filter(Boolean)
+    }
+
+    function parseGamepadLayout(value) {
+        if (!value) return []
+        if (Array.isArray(value)) return value
+        if (typeof value === 'string') {
+            try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : [] }
+            catch (err) { return [] }
+        }
+        return []
+    }
+
+    function normalizeConfigSystemMap(rows) {
+        if (!Array.isArray(rows) || !rows.length) return null
+        const builtinById = {}
+        SYSTEM_MAP.forEach(entry => { builtinById[entry.system] = entry })
+        return rows.map(row => {
+            if (!row || !row.system) return null
+            const system = String(row.system).trim()
+            const builtin = builtinById[system]
+            const extensions = splitCsv(row.extensions)
+            const core = splitCsv(row.core)
+            return {
+                system,
+                manufacturer: String(row.manufacturer || '').trim() || (builtin ? builtin.manufacturer : ''),
+                name: String(row.name || '').trim() || (builtin ? builtin.name : system),
+                extensions: extensions.length ? extensions : (builtin ? builtin.extensions.slice() : []),
+                core: core.length ? core : (builtin ? builtin.core.slice() : []),
+                icons: builtin ? builtin.icons.slice() : [],
+                bios: String(row.bios || ''),
+                aliases: splitCsv(row.aliases),
+                artworkRepo: String(row.artworkRepo || ''),
+                gamepadLayout: parseGamepadLayout(row.gamepadLayout),
+            }
+        }).filter(Boolean)
+    }
+
+    const configuredSystems = normalizeConfigSystemMap(config.systemMap)
+
+    function getSystemsForFile(filename) {
+        if (!configuredSystems) return getAllSystemsFromFile(filename)
+        if (!filename) return []
+        const ext = filename.indexOf('.') === -1 ? filename : filename.split('.').pop().toLowerCase()
+        return configuredSystems.filter(platform => platform.extensions.includes(ext))
+    }
+
+    const activeExtensions = (() => {
+        const set = new Set()
+        ;(configuredSystems || SYSTEM_MAP).forEach(platform => {
+            (platform.extensions || []).forEach(ext => set.add(ext))
+        })
+        return set
+    })()
+
+    function configuredPlatformsByExtension(extension) {
+        return configuredSystems.filter(platform => platform.extensions.includes(extension.toLowerCase()))
+    }
+
+    function configuredPossiblePlatforms(text) {
+        if (typeof text !== 'string') text = ''
+        text = text.trim().toLowerCase()
+        if (!text) return []
+
+        const detected = {}
+        function add(systemEntry, weight) {
+            const w = weight || 1
+            if (detected[systemEntry.system]) detected[systemEntry.system][1] += w
+            else detected[systemEntry.system] = [systemEntry, w]
+        }
+
+        const words = []
+        text.split(/[\\/]+/).map(part => part.trim()).filter(Boolean).forEach(part => {
+            words.push(part)
+            if (part.includes('.')) {
+                const seg = part.split('.')
+                const ext = seg.pop()
+                const name = seg.join('.')
+                if (name) words.push(name)
+                if (ext) {
+                    configuredPlatformsByExtension(ext).forEach(platform => add(platform, 2))
+                    words.push(ext)
+                }
+            } else {
+                part.split(' ').filter(Boolean).forEach(w => words.push(w))
+            }
+        })
+
+        const uniq = Array.from(new Set(words))
+        const norm = s => String(s || '').toLowerCase().split('_').join(' ').split('/').join(' ')
+
+        configuredSystems.forEach(systemEntry => {
+            const exactKeys = [systemEntry.system, systemEntry.name].concat(systemEntry.aliases || [])
+                .map(norm).filter(Boolean)
+            const looseKeys = [systemEntry.manufacturer, systemEntry.name, systemEntry.system]
+                .concat(systemEntry.core, systemEntry.extensions)
+                .map(norm).filter(Boolean)
+
+            for (const word of uniq) {
+                if (exactKeys.includes(word)) { add(systemEntry, 2); continue }
+                for (const key of looseKeys) {
+                    if (word.length > 3 && key.includes(word)) { add(systemEntry, 1); break }
+                }
+            }
+        })
+
+        return Object.values(detected)
+            .sort((a, b) => b[1] - a[1])
+            .filter(entry => entry[1] > 1)
+            .map(entry => entry[0])
+    }
+
+    function activePossiblePlatforms(text) {
+        if (!configuredSystems) return possiblePlatforms(text)
+        return configuredPossiblePlatforms(text)
+    }
+
+    debugLog('[EmulatorJS] system map override', configuredSystems ? configuredSystems.length : 'built-in')
+
     function enforceLocalEmulatorJs() {
         if (window.__ejsLocalOnly) return
         window.__ejsLocalOnly = true
@@ -886,7 +1007,7 @@
                 let games = response.results;
 
                 // order games by platform containsing the system of the rom, then alphabetically
-                const romSystems = getAllSystemsFromFile(entry.name).map(s => s.system.toLowerCase())
+                const romSystems = getSystemsForFile(entry.name).map(s => s.system.toLowerCase())
                 games.sort((a, b) => {
                     const aPlatforms = Array.isArray(a.platforms) ? a.platforms : (typeof a.platforms === 'string' ? a.platforms.split(',').map(s => s.trim()) : [])
                     const bPlatforms = Array.isArray(b.platforms) ? b.platforms : (typeof b.platforms === 'string' ? b.platforms.split(',').map(s => s.trim()) : [])
@@ -1146,7 +1267,7 @@
         const filename = entry.name
         // Prefer entry.ext when available
         const ext = (entry && entry.ext) ? entry.ext.toLowerCase() : (filename.includes('.') ? filename.split('.').pop().toLowerCase() : '')
-        const allSystems = getAllSystemsFromFile(ext || filename)
+        const allSystems = getSystemsForFile(ext || filename)
 
 
 
@@ -1438,7 +1559,7 @@
 
             const detectedConsoles = new Set()
 
-            possiblePlatforms(folderUri).forEach(systemInfo => {
+            activePossiblePlatforms(folderUri).forEach(systemInfo => {
 
                 detectedConsoles.add(systemInfo.name)
             })
@@ -1453,7 +1574,7 @@
                     const filename = line.trim()
                     if (!filename) continue
 
-                    getAllSystemsFromFile(filename).forEach(systemInfo => {
+                    getSystemsForFile(filename).forEach(systemInfo => {
                         detectedConsoles.add(systemInfo.name)
                     })
                 }
@@ -1740,7 +1861,7 @@
         const entryPath = entry.uri || entry.url;
         const srcCover = entryPath + `?get=game_cover&t=` + Date.now();
 
-        if (entry.isFolder || (entry.isFolder == false && compatibleExtensions.includes(entry.ext))) {
+        if (entry.isFolder || (entry.isFolder == false && activeExtensions.has(entry.ext))) {
             return HFS.h(ImgFallback, {
                 // No cover -> render nothing. HFS renders every entryIcon
                 // output, so a default-icon fallback here would duplicate the
