@@ -7,7 +7,7 @@
 // Allows opening ROMs in JavaScript emulators directly in the browser
 
 exports.description = "Plugin that integrates EmulatorJS to emulate classic console games directly in the browser"
-exports.version = 1.5;
+exports.version = 1.6;
 exports.apiRequired = 12.9;
 
 
